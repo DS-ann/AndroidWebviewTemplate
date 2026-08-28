@@ -6,4 +6,4 @@ When simplicity is the feature, **WebView delivers.**
 
 Cloudflare backend configured with D1 and Durable Objects.
 
-Deployment trigger: root directory fixed.
+Deployment trigger: root directory cleared.
