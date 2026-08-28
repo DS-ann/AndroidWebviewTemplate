@@ -1054,26 +1054,6 @@ export default{
     )
   }
 }
-
-async function ensureMessageReplyColumn(env){
-  try{
-    await env.DB.prepare(
-      'ALTER TABLE messages ADD COLUMN reply_to INTEGER'
-    ).run()
-  }catch(e){
-    if(
-      !String(e.message)
-        .toLowerCase()
-        .includes('duplicate')
-    ){
-      console.error(
-        'reply_to column check',
-        e
-      )
-    }
-  }
-}
-
 function clean(v){
   return String(v||'')
     .trim()
