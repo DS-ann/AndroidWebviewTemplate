@@ -1,0 +1,17 @@
+name = "twochat-api"
+main = "src/worker.js"
+compatibility_date = "2026-08-28"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "twochat"
+database_id = "REPLACE_AFTER_CREATING_D1"
+migrations_dir = "migrations"
+
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "Room"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]
