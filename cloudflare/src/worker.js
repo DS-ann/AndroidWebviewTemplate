@@ -4,7 +4,8 @@ const HTML=`<!doctype html><html><head><meta name="viewport" content="width=devi
 .msg-time{position:absolute;right:7px;bottom:4px;font-size:10px;color:#5d8b5d;white-space:nowrap}
 
 .attachment .msg-time{color:#6f9f6f}.msg:before{content:"> ";color:#397039}.reply-preview{
-  border-left:3px solid currentColor;
+  color:#6fa8dc;
+  border-left:3px solid #4a90e2;
   padding:4px 7px;
   margin:2px 0 5px;
   opacity:.85;
