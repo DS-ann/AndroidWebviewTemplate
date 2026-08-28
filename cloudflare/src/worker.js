@@ -232,6 +232,39 @@ main{
 }
 
 .composer{
+.reply-bar{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:7px 10px;
+  border-top:1px solid #174117;
+  border-left:3px solid #4a90e2;
+  background:#071007;
+  color:#6fa8dc;
+  font-size:12px;
+}
+
+.reply-bar.hidden{
+  display:none!important;
+}
+
+.reply-bar>div{
+  flex:1;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+
+.reply-bar button{
+  border:0;
+  background:transparent;
+  color:#6fa8dc;
+  font-size:22px;
+  cursor:pointer;
+  padding:0 5px;
+}
+
+.composer{
   display:flex;
   gap:8px;
   padding:10px;
@@ -543,7 +576,10 @@ main{
       </button>
 
     </div>
-
+<div id="replyBar" class="reply-bar hidden">
+  <div id="replyBarText"></div>
+  <button id="cancelReply">×</button>
+</div>
     <div class="composer">
 
       <textarea
