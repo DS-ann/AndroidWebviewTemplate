@@ -12,13 +12,202 @@ function showIncoming(x){incomingOffer=x;incomingCaller=x.from||'unknown';$('cal
 function hideIncoming(){incomingOffer=null;incomingCaller='';$('incoming').style.display='none'}
 function startTimeout(){clearTimeout(callTimeout);callTimeout=setTimeout(()=>{if(pc&&pc.connectionState!=='connected'){setStatus('CALL TIMEOUT');updateCallButton('failed');hangup(false)}},30000)}function clearCallTimeout(){if(callTimeout){clearTimeout(callTimeout);callTimeout=null}}
 function showVideoMode(){if(callKind==='video'){$('chat').classList.add('video-mode');$('callinfo').textContent='[ VIDEO CALL ]'}}function hideVideoMode(){$('chat').classList.remove('video-mode');$('remote').srcObject=null;$('local').srcObject=null}
-function makePeer(video){pc=new RTCPeerConnection(RTC_CONFIG);pendingCandidates=[];pc.onicecandidate=e=>{if(e.candidate)sendSignal({type:'candidate',candidate:e.candidate})};pc.ontrack=e=>{if(video){$('remote').srcObject=e.streams[0];$('remote').play().catch(()=>{});showVideoMode()}setStatus(video?'VIDEO CONNECTING...':'VOICE CONNECTING...')};pc.onconnectionstatechange=()=>{const s=pc?.connectionState;if(s==='connecting'){setStatus(video?'VIDEO CONNECTING...':'VOICE CONNECTING...');updateCallButton('connecting')}else if(s==='connected'){clearCallTimeout();setStatus(video?'VIDEO CONNECTED':'VOICE CONNECTED');updateCallButton('connected')}else if(s==='disconnected'){setStatus('CALL DISCONNECTED');updateCallButton('failed')}else if(s==='failed'){setStatus('CALL FAILED');updateCallButton('failed');try{pc.restartIce()}catch(e){}}else if(s==='closed'){setStatus('ONLINE')}};pc.oniceconnectionstatechange=()=>{const s=pc?.iceConnectionState;if(s==='checking'){setStatus(video?'VIDEO CONNECTING...':'VOICE CONNECTING...');updateCallButton('connecting')}else if(s==='connected'||s==='completed'){clearCallTimeout();setStatus(video?'VIDEO CONNECTED':'VOICE CONNECTED');updateCallButton('connected')}else if(s==='failed'){setStatus('ICE FAILED - RETRYING...');updateCallButton('failed')}};return pc}
+function makePeer(video){
+  pc=new RTCPeerConnection(RTC_CONFIG);
+  pendingCandidates=[];
+
+  pc.onicecandidate=e=>{
+    if(e.candidate){
+      sendSignal({
+        type:'candidate',
+        candidate:e.candidate
+      });
+    }
+  };
+
+  pc.ontrack=e=>{
+    if(video){
+      $('remote').srcObject=e.streams[0];
+      $('remote').play().catch(()=>{});
+      showVideoMode();
+    }
+    setStatus(video?'VIDEO CONNECTING...':'VOICE CONNECTING...');
+  };
+
+  pc.onconnectionstatechange=()=>{
+    const s=pc?.connectionState;
+
+    if(s==='connecting'){
+      setStatus(video?'VIDEO CONNECTING...':'VOICE CONNECTING...');
+      updateCallButton('connecting');
+
+    }else if(s==='connected'){
+      clearCallTimeout();
+      setStatus(video?'VIDEO CONNECTED':'VOICE CONNECTED');
+      updateCallButton('connected');
+
+    }else if(s==='disconnected'){
+      setStatus('CALL DISCONNECTED');
+      updateCallButton('failed');
+
+    }else if(s==='failed'){
+      setStatus('CALL FAILED');
+      updateCallButton('failed');
+
+    }else if(s==='closed'){
+      setStatus('ONLINE');
+    }
+  };
+
+  pc.oniceconnectionstatechange=()=>{
+    const s=pc?.iceConnectionState;
+
+    if(s==='checking'){
+      setStatus(video?'VIDEO CONNECTING...':'VOICE CONNECTING...');
+      updateCallButton('connecting');
+
+    }else if(s==='connected'||s==='completed'){
+      clearCallTimeout();
+      setStatus(video?'VIDEO CONNECTED':'VOICE CONNECTED');
+      updateCallButton('connected');
+
+    }else if(s==='failed'){
+      setStatus('ICE FAILED');
+      updateCallButton('failed');
+    }
+  };
+
+  return pc;
+}
 async function addPending(){if(!pc||!pc.remoteDescription)return;for(const c of pendingCandidates){try{await pc.addIceCandidate(c)}catch(e){console.warn('ICE candidate failed',e)}}pendingCandidates=[]}
 async function startCall(video){try{if(pc||localStream)return;callKind=video?'video':'voice';updateCallButton('connecting');setStatus(video?'VIDEO CONNECTING...':'VOICE CONNECTING...');startTimeout();localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:!!video});if(video){$('local').srcObject=localStream;$('local').play().catch(()=>{});showVideoMode()}makePeer(video);localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));const offer=await pc.createOffer({offerToReceiveAudio:true,offerToReceiveVideo:!!video});await pc.setLocalDescription(offer);sendSignal({type:'offer',sdp:pc.localDescription.sdp,video:!!video});setStatus(video?'VIDEO CALLING...':'VOICE CALLING...');updateCallButton('waiting')}catch(e){console.error(e);hangup(false);setStatus('CALL FAILED');alert((video?'Camera and microphone':'Microphone')+' permission is required for calling.')}}
 async function acceptIncoming(){const x=incomingOffer;hideIncoming();if(!x)return;try{callKind=x.video?'video':'voice';updateCallButton('connecting');setStatus((x.video?'VIDEO':'VOICE')+' CONNECTING FROM '+(x.from||'UNKNOWN')+'...');startTimeout();localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:!!x.video});if(x.video){$('local').srcObject=localStream;$('local').play().catch(()=>{});showVideoMode()}makePeer(!!x.video);localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));await pc.setRemoteDescription({type:'offer',sdp:x.sdp});await addPending();const answer=await pc.createAnswer();await pc.setLocalDescription(answer);sendSignal({type:'answer',sdp:pc.localDescription.sdp});setStatus(x.video?'VIDEO CONNECTING...':'VOICE CONNECTING...')}catch(e){console.error(e);hangup(false);setStatus('CALL FAILED')}}
 function rejectIncoming(){const x=incomingOffer;hideIncoming();if(x)sendSignal({type:'reject',from:x.from});setStatus('ONLINE')}
-async function signal(x){try{if(x.type==='offer'){if(pc||localStream){sendSignal({type:'busy'});return}showIncoming(x)}else if(x.type==='answer'&&pc){await pc.setRemoteDescription({type:'answer',sdp:x.sdp});await addPending()}else if(x.type==='candidate'){if(pc&&pc.remoteDescription)try{await pc.addIceCandidate(x.candidate)}catch(e){console.warn('ICE add failed',e)}else pendingCandidates.push(x.candidate)}else if(x.type==='hangup')hangup(false);else if(x.type==='reject'){clearCallTimeout();setStatus('CALL REJECTED BY '+(x.from||'PEER'));updateCallButton('failed');hangup(false)}else if(x.type==='busy'){clearCallTimeout();setStatus('PEER BUSY');updateCallButton('failed');hangup(false)}}catch(e){console.error('signaling error',e);setStatus('CALL FAILED')}}function hangup(send=true){clearCallTimeout();if(send)sendSignal({type:'hangup'});if(pc){pc.onicecandidate=null;pc.close();pc=null}if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null}pendingCandidates=[];hideIncoming();const old=callKind;callKind='';hideVideoMode();if(ws&&ws.readyState===WebSocket.OPEN){setStatus('ONLINE');if(old==='video')$('video').textContent='[start v...]';else if(old==='voice')$('voice').textContent='[start a...]'}}
-$('join').onclick=async()=>{name=$('name').value.trim();room=$('room').value.trim();if(!name||!room){alert('username and room_code required');return}sessionStorage.setItem('twochatName',name);sessionStorage.setItem('twochatRoom',room);$('setup').classList.add('hidden');$('chat').style.display='flex';setStatus('CONNECTING...');await history();const proto=location.protocol==='https:'?'wss':'ws';ws=new WebSocket(proto+'://'+location.host+'/ws?room='+encodeURIComponent(room)+'&name='+encodeURIComponent(name));ws.onopen=()=>setStatus('ONLINE');ws.onclose=()=>setStatus('DISCONNECTED');ws.onerror=()=>setStatus('CONNECTION ERROR');ws.onmessage=e=>{try{const x=JSON.parse(e.data);if(x.type==='message'||x.type==='attachment')add(x);else if(x.type==='peer')setStatus(x.online?'PEER ONLINE':'WAITING...');else if(['offer','answer','candidate','hangup','reject','busy'].includes(x.type))signal(x)}catch(err){console.error('WS message error',err)}}};$('send').onclick=send;$('attach').onclick=()=>$('file').click();$('file').onchange=uploadFile;$('voice').onclick=()=>startCall(false);$('video').onclick=()=>startCall(true);$('leave').onclick=()=>hangup();$('leave2').onclick=()=>hangup();$('accept').onclick=acceptIncoming;$('reject').onclick=rejectIncoming;const sn=sessionStorage.getItem('twochatName'),sr=sessionStorage.getItem('twochatRoom');if(sn)$('name').value=sn;if(sr)$('room').value=sr;
+async function signal(x){
+  try{
+    if(x.type==='offer'){
+      if(pc||localStream){
+        sendSignal({type:'busy'});
+        return;
+      }
+      showIncoming(x);
+
+    }else if(x.type==='answer'&&pc){
+      await pc.setRemoteDescription({
+        type:'answer',
+        sdp:x.sdp
+      });
+      await addPending();
+
+    }else if(x.type==='candidate'){
+      if(pc&&pc.remoteDescription){
+        try{
+          await pc.addIceCandidate(x.candidate);
+        }catch(e){
+          console.warn('ICE add failed',e);
+        }
+      }else{
+        pendingCandidates.push(x.candidate);
+      }
+
+    }else if(x.type==='hangup'){
+      hangup(false);
+      setStatus('CALL ENDED');
+
+    }else if(x.type==='reject'){
+      clearCallTimeout();
+      setStatus('CALL REJECTED BY '+(x.from||'PEER'));
+      updateCallButton('failed');
+      hangup(false);
+
+    }else if(x.type==='busy'){
+      clearCallTimeout();
+      setStatus('PEER BUSY');
+      updateCallButton('failed');
+      hangup(false);
+    }
+
+  }catch(e){
+    console.error('signaling error',e);
+    clearCallTimeout();
+    setStatus('CALL FAILED');
+  }
+}
+
+function hangup(send=true){
+  clearCallTimeout();
+
+  // Tell the other peer to end the call.
+  if(send){
+    sendSignal({
+      type:'hangup'
+    });
+  }
+
+  // Stop WebRTC first.
+  if(pc){
+    pc.onicecandidate=null;
+    pc.ontrack=null;
+    pc.onconnectionstatechange=null;
+    pc.oniceconnectionstatechange=null;
+
+    try{
+      pc.close();
+    }catch(e){
+      console.warn('PeerConnection close failed',e);
+    }
+
+    pc=null;
+  }
+
+  // Stop microphone/camera tracks.
+  if(localStream){
+    localStream.getTracks().forEach(track=>{
+      try{
+        track.stop();
+      }catch(e){
+        console.warn('Track stop failed',e);
+      }
+    });
+
+    localStream=null;
+  }
+
+  // Clear queued ICE candidates.
+  pendingCandidates=[];
+
+  // Remove incoming-call UI.
+  hideIncoming();
+
+  // Save the previous call type before clearing it.
+  const old=callKind;
+  callKind='';
+
+  // Clear video-call UI and media.
+  hideVideoMode();
+
+  const remote=$('remote');
+  if(remote){
+    remote.srcObject=null;
+  }
+
+  const local=$('local');
+  if(local){
+    local.srcObject=null;
+  }
+
+  // Restore normal chat UI.
+  $('chat').classList.remove('video-mode');
+
+  // Reset buttons.
+  $('voice').textContent='[start a...]';
+  $('video').textContent='[start v...]';
+
+  // Return to normal online state.
+  if(ws&&ws.readyState===WebSocket.OPEN){
+    setStatus('ONLINE');
+  }
+}$('join').onclick=async()=>{name=$('name').value.trim();room=$('room').value.trim();if(!name||!room){alert('username and room_code required');return}sessionStorage.setItem('twochatName',name);sessionStorage.setItem('twochatRoom',room);$('setup').classList.add('hidden');$('chat').style.display='flex';setStatus('CONNECTING...');await history();const proto=location.protocol==='https:'?'wss':'ws';ws=new WebSocket(proto+'://'+location.host+'/ws?room='+encodeURIComponent(room)+'&name='+encodeURIComponent(name));ws.onopen=()=>setStatus('ONLINE');ws.onclose=()=>setStatus('DISCONNECTED');ws.onerror=()=>setStatus('CONNECTION ERROR');ws.onmessage=e=>{try{const x=JSON.parse(e.data);if(x.type==='message'||x.type==='attachment')add(x);else if(x.type==='peer')setStatus(x.online?'PEER ONLINE':'WAITING...');else if(['offer','answer','candidate','hangup','reject','busy'].includes(x.type))signal(x)}catch(err){console.error('WS message error',err)}}};$('send').onclick=send;$('attach').onclick=()=>$('file').click();$('file').onchange=uploadFile;$('voice').onclick=()=>startCall(false);$('video').onclick=()=>startCall(true);$('leave').onclick=()=>hangup();$('leave2').onclick=()=>hangup();$('accept').onclick=acceptIncoming;$('reject').onclick=rejectIncoming;const sn=sessionStorage.getItem('twochatName'),sr=sessionStorage.getItem('twochatRoom');if(sn)$('name').value=sn;if(sr)$('room').value=sr;
 </script></body></html>`;
 async function ensureAttachmentTable(env){await env.DB.prepare('CREATE TABLE IF NOT EXISTS attachments (id INTEGER PRIMARY KEY AUTOINCREMENT, room TEXT NOT NULL, sender TEXT NOT NULL, filename TEXT NOT NULL, mime_type TEXT NOT NULL, size INTEGER NOT NULL, data BLOB NOT NULL, created_at INTEGER NOT NULL)').run();await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_attachments_room_created ON attachments(room, created_at)').run()}
 export default{async fetch(request,env){const url=new URL(request.url);if(request.method==='OPTIONS')return new Response(null,{headers:CORS});if(url.pathname==='/'||url.pathname==='/index.html')return new Response(HTML,{headers:{'content-type':'text/html;charset=UTF-8'}});if(url.pathname==='/ws'){if(request.headers.get('Upgrade')!=='websocket')return new Response('WebSocket required',{status:426});const room=clean(url.searchParams.get('room')),name=clean(url.searchParams.get('name'));if(!room||!name)return new Response('room and name required',{status:400,headers:CORS});const id=env.ROOMS.idFromName(room);return env.ROOMS.get(id).fetch(new Request('https://room/ws?'+new URLSearchParams({room,name}),request))}if(url.pathname==='/api/messages'&&request.method==='GET'){const room=clean(url.searchParams.get('room'));if(!room)return json({error:'room required'},400);await ensureAttachmentTable(env);const [mr,ar]=await Promise.all([env.DB.prepare('SELECT id,room,sender,text,created_at FROM messages WHERE room=? ORDER BY id DESC LIMIT 200').bind(room).all(),env.DB.prepare('SELECT id,room,sender,filename,mime_type,size,created_at FROM attachments WHERE room=? AND created_at>=? ORDER BY id DESC LIMIT 200').bind(room,Date.now()-172800000).all()]);const results=[...mr.results,...ar.results.map(x=>({...x,type:'attachment'}))].sort((a,b)=>a.created_at-b.created_at);return json(results.slice(-200),200)}if(url.pathname==='/api/messages'&&request.method==='POST'){let b;try{b=await request.json()}catch{return json({error:'invalid JSON'},400)}const room=clean(b.room),sender=clean(b.name),text=String(b.text||'').slice(0,2000);if(!room||!sender||!text)return json({error:'room, name and text required'},400);const now=Date.now(),r=await env.DB.prepare('INSERT INTO messages(room,sender,text,created_at) VALUES(?,?,?,?)').bind(room,sender,text,now).run();const message={id:r.meta.last_row_id,room,sender,text,created_at:now,type:'message'};const id=env.ROOMS.idFromName(room);await env.ROOMS.get(id).fetch('https://room/broadcast',{method:'POST',body:JSON.stringify(message)});return json(message,201)}if(url.pathname==='/api/attachments'&&request.method==='POST'){try{await ensureAttachmentTable(env);const form=await request.formData();const room=clean(form.get('room')),sender=clean(form.get('name')),file=form.get('file');if(!room||!sender||!file||typeof file.arrayBuffer!=='function')return json({error:'room, name and file required'},400);if(file.size>MAX_ATTACHMENT_BYTES)return json({error:'attachment too large; maximum is 1.4 MB'},413);const filename=String(file.name||'attachment').slice(0,180);const mime=String(file.type||'application/octet-stream').slice(0,120);const data=await file.arrayBuffer();const now=Date.now();const r=await env.DB.prepare('INSERT INTO attachments(room,sender,filename,mime_type,size,data,created_at) VALUES(?,?,?,?,?,?,?)').bind(room,sender,filename,mime,file.size,data,now).run();const message={id:r.meta.last_row_id,room,sender,filename,mime_type:mime,size:file.size,created_at:now,type:'attachment'};const id=env.ROOMS.idFromName(room);await env.ROOMS.get(id).fetch('https://room/broadcast',{method:'POST',body:JSON.stringify(message)});return json(message,201)}catch(e){console.error('attachment upload',e);return json({error:'attachment upload failed'},500)}}if(url.pathname.startsWith('/api/attachments/')&&request.method==='GET'){await ensureAttachmentTable(env);const id=Number(url.pathname.split('/').pop());const room=clean(url.searchParams.get('room'));if(!Number.isInteger(id)||id<1||!room)return new Response('Not found',{status:404,headers:CORS});const row=await env.DB.prepare('SELECT filename,mime_type,size,data,created_at FROM attachments WHERE id=? AND room=?').bind(id,room).first();if(!row||Date.now()-Number(row.created_at)>=172800000)return new Response('Attachment expired',{status:410,headers:CORS});const bytes=new Uint8Array(row.data);return new Response(bytes,{headers:{...CORS,'content-type':row.mime_type||'application/octet-stream','content-length':String(row.size),'content-disposition':'inline; filename="'+String(row.filename).replace(/["\\\r\n]/g,'_')+'"','cache-control':'private, max-age=300'}})}return json({name:'Asus vs Redmi API',status:'ok',endpoints:['/api/messages','/api/attachments','/ws']},200)},async scheduled(event,env,ctx){ctx.waitUntil((async()=>{try{await ensureAttachmentTable(env);const now=Date.now();await env.DB.prepare('DELETE FROM attachments WHERE created_at < ?').bind(now-172800000).run();await env.DB.prepare('DELETE FROM messages WHERE created_at < ?').bind(now-2592000000).run()}catch(e){console.error('retention cleanup',e)}})())}};function clean(v){return String(v||'').trim().slice(0,128)}function json(data,status){return new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json',...CORS}})}export class Room{constructor(state){this.state=state;this.clients=new Map()}async fetch(request){const url=new URL(request.url);if(url.pathname==='/broadcast'&&request.method==='POST'){const msg=await request.json();for(const ws of this.clients.keys())try{ws.send(JSON.stringify(msg))}catch{}return new Response('ok')}if(url.pathname==='/ws'){const pair=new WebSocketPair();const [client,server]=Object.values(pair);const name=url.searchParams.get('name')||'Guest';server.accept();this.clients.set(server,name);server.send(JSON.stringify({type:'peer',online:this.clients.size>1}));this.broadcast({type:'peer',online:this.clients.size>1},server);server.addEventListener('message',event=>{try{const x=JSON.parse(event.data);if(['offer','answer','candidate','hangup','reject','busy'].includes(x.type))this.broadcast({...x,from:name},server)}catch{}});server.addEventListener('close',()=>{this.clients.delete(server);this.broadcast({type:'peer',online:this.clients.size>1})});return new Response(null,{status:101,webSocket:client})}return new Response('not found',{status:404})}broadcast(obj,except){for(const ws of this.clients.keys()){if(ws===except)continue;try{ws.send(JSON.stringify(obj))}catch{}}}}
