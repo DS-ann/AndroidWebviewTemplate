@@ -17,4 +17,4 @@ tag = "v1"
 new_sqlite_classes = ["Room"]
 
 [triggers]
-crons = ["0 0 * * *"]
+crons = ["0 * * * *"]
