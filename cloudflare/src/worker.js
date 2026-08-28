@@ -34,11 +34,441 @@ const HTML=`<!doctype html><html><head><meta name="viewport" content="width=devi
 
 .msg{
   transition:transform .15s ease;
-}.mine{margin-left:auto;text-align:left;color:#8dff8d;border-color:#65ff65}.mine:before{content:"$";color:#559955}.who{display:inline;color:#559955;font-size:12px}.who:after{content:": ";color:#397039}.attachment{display:inline-block;position:relative;margin-top:4px;padding:7px 45px 24px 9px;border:1px solid #397a39;color:#9fff9f;text-decoration:none;background:#071007}.attachment:hover{border-color:#65ff65}.attachment small{display:block;color:#6f9f6f;margin-top:3px}.composer{display:flex;gap:8px;padding:10px;border-top:1px solid #174117}.composer input,.composer textarea{flex:1;padding:11px;resize:none;min-height:42px;max-height:120px}.composer button,.tools button{padding:10px 14px;background:#0c2d0c;border:1px solid #397a39;color:#9fff9f;font:inherit;font-weight:bold;cursor:pointer}.tools{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:8px 10px;border-top:1px solid #174117}.tools button{width:100%}.call{border-color:#55a955!important}.video{border-color:#5b8db8!important;color:#a9d5ff!important}.danger{border-color:#a95555!important;color:#ff9f9f!important}.attach{border-color:#7a9f55!important}.hidden{display:none!important}.callview{display:none;position:relative;flex:1;min-height:0;background:#000;overflow:hidden}.callview.active{display:block}.remote{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}.local{position:absolute;right:14px;bottom:14px;width:30%;max-width:190px;aspect-ratio:4/3;object-fit:cover;background:#010301;border:1px solid #65ff65;z-index:3}.callinfo{position:absolute;left:12px;top:10px;z-index:3;padding:5px 8px;background:#020502dd;border:1px solid #397a39;color:#9fff9f;font-size:12px}.callcontrols{position:absolute;left:0;right:0;bottom:0;z-index:3;display:flex;justify-content:center;padding:12px;background:linear-gradient(transparent,#020502dd)}.callcontrols button{padding:10px 18px;background:#0c2d0c;border:1px solid #a95555;color:#ff9f9f;font:inherit;font-weight:bold;cursor:pointer}.video-mode .messages,.video-mode .tools,.video-mode .composer{display:none}.video-mode .callview{display:block}.incoming{display:none;margin:10px;border:1px solid #5b8db8;background:#071007;padding:12px}.incoming .caller{color:#a9d5ff;margin-bottom:10px}.incoming button{padding:8px 12px;margin-right:8px;background:#0c2d0c;border:1px solid #397a39;color:#9fff9f;font:inherit;font-weight:bold}.incoming .reject{border-color:#a95555;color:#ff9f9f}</style></head><body><main><div class="top"><div class="brand">ASUS VS REDMI</div><div id="status" class="status">[ OFFLINE ]</div></div><section id="setup" class="setup"><h2>./join-room</h2><p>Enter your identity and private room code.</p><input id="name" maxlength="40" placeholder="username"><input id="room" maxlength="64" placeholder="room_code"><button id="join">[ EXECUTE JOIN ]</button><div class="hint">Use the same room code on both devices.</div></section><section id="chat" class="chat"><div class="messages" id="messages"></div><div id="incoming" class="incoming"><div id="caller" class="caller"></div><button id="accept">[accept]</button><button id="reject" class="reject">[reject]</button></div><div id="callview" class="callview"><div id="callinfo" class="callinfo"></div><video id="remote" class="remote" autoplay playsinline></video><video id="local" class="local" autoplay muted playsinline></video><div class="callcontrols"><button id="leave2" class="danger">[end a.v...]</button></div></div><div class="tools"><button id="voice" class="call">[start a...]</button><button id="video" class="video">[start v...]</button><button id="leave" class="danger">[end a.v...]</button></div><div class="composer"><textarea id="text" maxlength="2000" placeholder="type_message..." autocomplete="off"></textarea><button id="attach" class="attach">[attach]</button><input id="file" type="file" class="hidden"><button id="send">SEND</button></div></section></main><script>
-let name='',room='',ws=null,pc=null,localStream=null,pendingCandidates=[],callKind='',callTimeout=null,incomingOffer=null,incomingCaller='',replyTo=null;
-const $=id=>document.getElementById(id);const esc=s=>String(s).replace(/[&<>\\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\"':'&quot;',"'":'&#39;'}[c]));const RTC_CONFIG={iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}],iceCandidatePoolSize:4};
+}
+
+.mine{
+  margin-left:auto;
+  text-align:left;
+  color:#8dff8d;
+  border-color:#65ff65;
+}
+
+.mine:before{
+  content:"$";
+  color:#559955;
+}
+
+.who{
+  display:inline;
+  color:#559955;
+  font-size:12px;
+}
+
+.who:after{
+  content:": ";
+  color:#397039;
+}
+
+.attachment{
+  display:inline-block;
+  position:relative;
+  margin-top:4px;
+  padding:7px 45px 24px 9px;
+  border:1px solid #397a39;
+  color:#9fff9f;
+  text-decoration:none;
+  background:#071007;
+}
+
+.attachment:hover{
+  border-color:#65ff65;
+}
+
+.attachment small{
+  display:block;
+  color:#6f9f6f;
+  margin-top:3px;
+}
+
+.composer{
+  display:flex;
+  gap:8px;
+  padding:10px;
+  border-top:1px solid #174117;
+}
+
+.composer input,
+.composer textarea{
+  flex:1;
+  padding:11px;
+  resize:none;
+  min-height:42px;
+  max-height:120px;
+}
+
+.composer button,
+.tools button{
+  padding:10px 14px;
+  background:#0c2d0c;
+  border:1px solid #397a39;
+  color:#9fff9f;
+  font:inherit;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+.tools{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:8px;
+  padding:8px 10px;
+  border-top:1px solid #174117;
+}
+
+.tools button{
+  width:100%;
+}
+
+.call{
+  border-color:#55a955!important;
+}
+
+.video{
+  border-color:#5b8db8!important;
+  color:#a9d5ff!important;
+}
+
+.danger{
+  border-color:#a95555!important;
+  color:#ff9f9f!important;
+}
+
+.attach{
+  border-color:#7a9f55!important;
+}
+
+.hidden{
+  display:none!important;
+}
+
+.callview{
+  display:none;
+  position:relative;
+  flex:1;
+  min-height:0;
+  background:#000;
+  overflow:hidden;
+}
+
+.callview.active{
+  display:block;
+}
+
+.remote{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  background:#000;
+}
+
+.local{
+  position:absolute;
+  right:14px;
+  bottom:14px;
+  width:30%;
+  max-width:190px;
+  aspect-ratio:4/3;
+  object-fit:cover;
+  background:#010301;
+  border:1px solid #65ff65;
+  z-index:3;
+}
+
+.callinfo{
+  position:absolute;
+  left:12px;
+  top:10px;
+  z-index:3;
+  padding:5px 8px;
+  background:#020502dd;
+  border:1px solid #397a39;
+  color:#9fff9f;
+  font-size:12px;
+}
+
+.callcontrols{
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  z-index:3;
+  display:flex;
+  justify-content:center;
+  padding:12px;
+  background:linear-gradient(transparent,#020502dd);
+}
+
+.callcontrols button{
+  padding:10px 18px;
+  background:#0c2d0c;
+  border:1px solid #a95555;
+  color:#ff9f9f;
+  font:inherit;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+.video-mode .messages,
+.video-mode .tools,
+.video-mode .composer{
+  display:none;
+}
+
+.video-mode .callview{
+  display:block;
+}
+
+.incoming{
+  display:none;
+  margin:10px;
+  border:1px solid #5b8db8;
+  background:#071007;
+  padding:12px;
+}
+
+.incoming .caller{
+  color:#a9d5ff;
+  margin-bottom:10px;
+}
+
+.incoming button{
+  padding:8px 12px;
+  margin-right:8px;
+  background:#0c2d0c;
+  border:1px solid #397a39;
+  color:#9fff9f;
+  font:inherit;
+  font-weight:bold;
+}
+
+.incoming .reject{
+  border-color:#a95555;
+  color:#ff9f9f;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<main>
+
+  <div class="top">
+
+    <div class="brand">
+      ASUS VS REDMI
+    </div>
+
+    <div id="status" class="status">
+      [ OFFLINE ]
+    </div>
+
+  </div>
+
+  <section id="setup" class="setup">
+
+    <h2>
+      ./join-room
+    </h2>
+
+    <p>
+      Enter your identity and private room code.
+    </p>
+
+    <input
+      id="name"
+      maxlength="40"
+      placeholder="username"
+    >
+
+    <input
+      id="room"
+      maxlength="64"
+      placeholder="room_code"
+    >
+
+    <button id="join">
+      [ EXECUTE JOIN ]
+    </button>
+
+    <div class="hint">
+      Use the same room code on both devices.
+    </div>
+
+  </section>
+
+  <section id="chat" class="chat">
+
+    <div
+      class="messages"
+      id="messages"
+    ></div>
+
+    <div
+      id="incoming"
+      class="incoming"
+    >
+
+      <div
+        id="caller"
+        class="caller"
+      ></div>
+
+      <button id="accept">
+        [accept]
+      </button>
+
+      <button
+        id="reject"
+        class="reject"
+      >
+        [reject]
+      </button>
+
+    </div>
+
+    <div
+      id="callview"
+      class="callview"
+    >
+
+      <div
+        id="callinfo"
+        class="callinfo"
+      ></div>
+
+      <video
+        id="remote"
+        class="remote"
+        autoplay
+        playsinline
+      ></video>
+
+      <video
+        id="local"
+        class="local"
+        autoplay
+        muted
+        playsinline
+      ></video>
+
+      <div class="callcontrols">
+
+        <button
+          id="leave2"
+          class="danger"
+        >
+          [end a.v...]
+        </button>
+
+      </div>
+
+    </div>
+
+    <div class="tools">
+
+      <button
+        id="voice"
+        class="call"
+      >
+        [start a...]
+      </button>
+
+      <button
+        id="video"
+        class="video"
+      >
+        [start v...]
+      </button>
+
+      <button
+        id="leave"
+        class="danger"
+      >
+        [end a.v...]
+      </button>
+
+    </div>
+
+    <div class="composer">
+
+      <textarea
+        id="text"
+        maxlength="2000"
+        placeholder="type_message..."
+        autocomplete="off"
+      ></textarea>
+
+      <button
+        id="attach"
+        class="attach"
+      >
+        [attach]
+      </button>
+
+      <input
+        id="file"
+        type="file"
+        class="hidden"
+      >
+
+      <button id="send">
+        SEND
+      </button>
+
+    </div>
+
+  </section>
+
+</main>
+
+<script>
+
+let name='';
+let room='';
+let ws=null;
+let pc=null;
+let localStream=null;
+let pendingCandidates=[];
+let callKind='';
+let callTimeout=null;
+let incomingOffer=null;
+let incomingCaller='';
+let replyTo=null;
+
+const $=id=>document.getElementById(id);
+
+const esc=s=>String(s).replace(
+  /[&<>"']/g,
+  c=>({
+    '&':'&amp;',
+    '<':'&lt;',
+    '>':'&gt;',
+    '"':'&quot;',
+    "'":'&#39;'
+  }[c])
+);
+
+const RTC_CONFIG={
+  iceServers:[
+    {
+      urls:'stun:stun.l.google.com:19302'
+    },
+    {
+      urls:'stun:stun1.l.google.com:19302'
+    }
+  ],
+  iceCandidatePoolSize:4
+};
+
 function setStatus(x){
-  $('status').textContent='[ '+x+' ]'
+
+  $('status').textContent=
+    '[ '+x+' ]';
+
 }
 
 function fmtSize(n){
@@ -118,23 +548,23 @@ function add(m){
   },{passive:true})
 
   d.addEventListener('touchend',()=>{
-    if(swiping&&d.classList.contains('reply-ready')){
-      replyTo=m
+  if(swiping&&d.classList.contains('reply-ready')){
+    replyTo=m
 
-      const preview=(m.text||m.filename||'attachment')
-        .replace(/\s+/g,' ')
-        .slice(0,80)
+    const preview=(m.text||m.filename||'attachment')
+      .replace(/\s+/g,' ')
+      .slice(0,80)
 
-      $('text').placeholder=
-        'Replying to '+m.sender+': '+preview
+    $('text').placeholder=
+      'Replying to '+m.sender+': '+preview
 
-      $('text').focus()
-    }
+    $('text').focus()
+  }
 
-    d.style.transform=''
-    d.classList.remove('reply-ready')
-    swiping=false
-  })
+  d.style.transform=''
+  d.classList.remove('reply-ready')
+  swiping=false
+})
 
   d.querySelector('.reply-preview')?.addEventListener('click',()=>{
     const targetId=
