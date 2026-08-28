@@ -656,7 +656,40 @@ function setStatus(x){
     '[ '+x+' ]';
 
 }
+function showReplyBar(m){
 
+  replyTo=m;
+
+  const preview=
+    (m.text||m.filename||'attachment')
+      .replace(/\s+/g,' ')
+      .slice(0,80);
+
+  $('replyBarText').textContent=
+    'Replying to '+m.sender+': '+preview;
+
+  $('replyBar').classList.remove('hidden');
+
+  $('text').placeholder=
+    'Replying to '+m.sender+': '+preview;
+
+  $('text').focus();
+}
+
+function cancelReply(){
+
+  replyTo=null;
+
+  $('replyBarText').textContent='';
+
+  $('replyBar').classList.add('hidden');
+
+  $('text').placeholder='type_message...';
+
+  $('text').focus();
+}
+
+$('cancelReply').onclick=cancelReply;
 function fmtSize(n){
   return n<1024?n+' B':n<1048576?(n/1024).toFixed(1)+' KB':(n/1048576).toFixed(2)+' MB'
 }
@@ -734,23 +767,20 @@ function add(m){
   },{passive:true})
 
   d.addEventListener('touchend',()=>{
-  if(swiping&&d.classList.contains('reply-ready')){
-    replyTo=m
 
-    const preview=(m.text||m.filename||'attachment')
-      .replace(/\s+/g,' ')
-      .slice(0,80)
-
-    $('text').placeholder=
-      'Replying to '+m.sender+': '+preview
-
-    $('text').focus()
+  if(
+    swiping &&
+    d.classList.contains('reply-ready')
+  ){
+    showReplyBar(m);
   }
 
-  d.style.transform=''
-  d.classList.remove('reply-ready')
-  swiping=false
-})
+  d.style.transform='';
+
+  d.classList.remove('reply-ready');
+
+  swiping=false;
+});
 
   d.querySelector('.reply-preview')?.addEventListener('click',()=>{
     const targetId=
