@@ -1,7 +1,158 @@
 const CORS={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"Content-Type","Access-Control-Allow-Methods":"GET,POST,OPTIONS"};
 const MAX_ATTACHMENT_BYTES=1400000;
-const HTML=`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Asus vs Redmi // Terminal</title><style>*{box-sizing:border-box}html,body{margin:0;height:100%;background:#050805;color:#c8ffc8;font-family:"Courier New",monospace}body{display:flex;justify-content:center}main{width:min(900px,100%);height:100%;display:flex;flex-direction:column;background:#020502;border:1px solid #183818;box-shadow:0 0 30px #001500}.top{padding:13px 16px;border-bottom:1px solid #174117;display:flex;justify-content:space-between;align-items:center;background:#071007}.brand{font-weight:bold;color:#65ff65}.brand:before{content:"root@asus-vs-redmi:~$ ";color:#3d9f3d}.status{font-size:12px;color:#75d875}.setup{margin:auto;width:min(620px,90%);display:grid;gap:12px;padding:25px;border:1px solid #205820;background:#050b05;box-shadow:0 0 20px #001800}.setup h2{margin:0;color:#7cff7c;font-size:18px}.setup p,.hint{color:#6f9f6f;font-size:13px}.setup p{margin:0}.setup input,.composer input{background:#020502;border:1px solid #276027;color:#bfffbf;outline:none;font:inherit}.setup input{padding:12px}.setup input:focus,.composer input:focus{border-color:#65ff65}.setup button{padding:12px;background:#123d12;border:1px solid #4eaf4e;color:#9fff9f;font:inherit;font-weight:bold;cursor:pointer}.chat{display:none;flex:1;min-height:0;flex-direction:column}.messages{flex:1;overflow:auto;padding:16px}.messages:before{content:"--- secure room session ---";display:block;color:#397039;margin-bottom:12px}.msg{display:table;margin:7px 0;max-width:75%;width:auto;overflow-wrap:anywhere;line-height:1.45;position:relative;padding:7px 8px 20px;white-space:pre-wrap;border:1px solid #397a39;border-radius:8px;background:transparent}
-.msg-time{position:absolute;right:7px;bottom:4px;font-size:10px;color:#5d8b5d;white-space:nowrap}
+const HTML=`
+<!doctype html>
+<html>
+<head>
+
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>
+  Asus vs Redmi // Terminal
+</title>
+
+<style>
+
+*{
+  box-sizing:border-box;
+}
+
+html,
+body{
+  margin:0;
+  height:100%;
+  background:#050805;
+  color:#c8ffc8;
+  font-family:"Courier New",monospace;
+}
+
+body{
+  display:flex;
+  justify-content:center;
+}
+
+main{
+  width:min(900px,100%);
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  background:#020502;
+  border:1px solid #183818;
+  box-shadow:0 0 30px #001500;
+}
+
+.top{
+  padding:13px 16px;
+  border-bottom:1px solid #174117;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  background:#071007;
+}
+
+.brand{
+  font-weight:bold;
+  color:#65ff65;
+}
+
+.brand:before{
+  content:"root@asus-vs-redmi:~$ ";
+  color:#3d9f3d;
+}
+
+.status{
+  font-size:12px;
+  color:#75d875;
+}
+
+.setup{
+  margin:auto;
+  width:min(620px,90%);
+  display:grid;
+  gap:12px;
+  padding:25px;
+  border:1px solid #205820;
+  background:#050b05;
+  box-shadow:0 0 20px #001800;
+}
+
+.setup h2{
+  margin:0;
+  color:#7cff7c;
+  font-size:18px;
+}
+
+.setup p,
+.hint{
+  color:#6f9f6f;
+  font-size:13px;
+}
+
+.setup p{
+  margin:0;
+}
+
+.setup input,
+.composer input{
+  background:#020502;
+  border:1px solid #276027;
+  color:#bfffbf;
+  outline:none;
+  font:inherit;
+}
+
+.setup input{
+  padding:12px;
+}
+
+.setup input:focus,
+.composer input:focus{
+  border-color:#65ff65;
+}
+
+.setup button{
+  padding:12px;
+  background:#123d12;
+  border:1px solid #4eaf4e;
+  color:#9fff9f;
+  font:inherit;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+.chat{
+  display:none;
+  flex:1;
+  min-height:0;
+  flex-direction:column;
+}
+
+.messages{
+  flex:1;
+  overflow:auto;
+  padding:16px;
+}
+
+.messages:before{
+  content:"--- secure room session ---";
+  display:block;
+  color:#397039;
+  margin-bottom:12px;
+}
+
+.msg{
+  display:table;
+  margin:7px 0;
+  max-width:75%;
+  width:auto;
+  overflow-wrap:anywhere;
+  line-height:1.45;
+  position:relative;
+  padding:7px 8px 20px;
+  white-space:pre-wrap;
+  border:1px solid #397a39;
+  border-radius:8px;
+  background:transparent;}.msg-time{position:absolute;right:7px;bottom:4px;font-size:10px;color:#5d8b5d;white-space:nowrap}
 
 .attachment .msg-time{color:#6f9f6f}.msg:before{content:"> ";color:#397039}.reply-preview{
   color:#6fa8dc;
@@ -860,11 +1011,218 @@ function makePeer(video){
 
   return pc;
 }
-async function addPending(){if(!pc||!pc.remoteDescription)return;for(const c of pendingCandidates){try{await pc.addIceCandidate(c)}catch(e){console.warn('ICE candidate failed',e)}}pendingCandidates=[]}
-async function startCall(video){try{if(pc||localStream)return;callKind=video?'video':'voice';updateCallButton('connecting');setStatus(video?'VIDEO CONNECTING...':'VOICE CONNECTING...');startTimeout();localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:!!video});if(video){$('local').srcObject=localStream;$('local').play().catch(()=>{});showVideoMode()}makePeer(video);localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));const offer=await pc.createOffer({offerToReceiveAudio:true,offerToReceiveVideo:!!video});await pc.setLocalDescription(offer);sendSignal({type:'offer',sdp:pc.localDescription.sdp,video:!!video});setStatus(video?'VIDEO CALLING...':'VOICE CALLING...');updateCallButton('waiting')}catch(e){console.error(e);hangup(false);setStatus('CALL FAILED');alert((video?'Camera and microphone':'Microphone')+' permission is required for calling.')}}
-async function acceptIncoming(){const x=incomingOffer;hideIncoming();if(!x)return;try{callKind=x.video?'video':'voice';updateCallButton('connecting');setStatus((x.video?'VIDEO':'VOICE')+' CONNECTING FROM '+(x.from||'UNKNOWN')+'...');startTimeout();localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:!!x.video});if(x.video){$('local').srcObject=localStream;$('local').play().catch(()=>{});showVideoMode()}makePeer(!!x.video);localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));await pc.setRemoteDescription({type:'offer',sdp:x.sdp});await addPending();const answer=await pc.createAnswer();await pc.setLocalDescription(answer);sendSignal({type:'answer',sdp:pc.localDescription.sdp});setStatus(x.video?'VIDEO CONNECTING...':'VOICE CONNECTING...')}catch(e){console.error(e);hangup(false);setStatus('CALL FAILED')}}
-function rejectIncoming(){const x=incomingOffer;hideIncoming();if(x)sendSignal({type:'reject',from:x.from});setStatus('ONLINE')}
-async function signal(x){
+async function addPending(){
+  if(!pc||!pc.remoteDescription)return;
+
+  for(const c of pendingCandidates){
+    try{
+      await pc.addIceCandidate(c);
+    }catch(e){
+      console.warn(
+        'ICE candidate failed',
+        e
+      );
+    }
+  }
+
+  pendingCandidates=[];
+}
+
+async function startCall(video){
+  try{
+    if(pc||localStream)return;
+
+    callKind=video?'video':'voice';
+
+    updateCallButton('connecting');
+
+    setStatus(
+      video
+        ? 'VIDEO CONNECTING...'
+        : 'VOICE CONNECTING...'
+    );
+
+    startTimeout();
+
+    localStream=
+      await navigator.mediaDevices.getUserMedia({
+        audio:true,
+        video:!!video
+      });
+
+    if(video){
+      $('local').srcObject=localStream;
+
+      $('local')
+        .play()
+        .catch(()=>{});
+
+      showVideoMode();
+    }
+
+    makePeer(video);
+
+    localStream
+      .getTracks()
+      .forEach(t=>{
+        pc.addTrack(
+          t,
+          localStream
+        );
+      });
+
+    const offer=
+      await pc.createOffer({
+        offerToReceiveAudio:true,
+        offerToReceiveVideo:!!video
+      });
+
+    await pc.setLocalDescription(
+      offer
+    );
+
+    sendSignal({
+      type:'offer',
+      sdp:pc.localDescription.sdp,
+      video:!!video
+    });
+
+    setStatus(
+      video
+        ? 'VIDEO CALLING...'
+        : 'VOICE CALLING...'
+    );
+
+    updateCallButton('waiting');
+
+  }catch(e){
+
+    console.error(e);
+
+    hangup(false);
+
+    setStatus('CALL FAILED');
+
+    alert(
+      (video
+        ? 'Camera and microphone'
+        : 'Microphone'
+      )+
+      ' permission is required for calling.'
+    );
+  }
+}
+
+async function acceptIncoming(){
+  const x=incomingOffer;
+
+  hideIncoming();
+
+  if(!x)return;
+
+  try{
+
+    callKind=
+      x.video
+        ? 'video'
+        : 'voice';
+
+    updateCallButton(
+      'connecting'
+    );
+
+    setStatus(
+      (x.video?'VIDEO':'VOICE')+
+      ' CONNECTING FROM '+
+      (x.from||'UNKNOWN')+
+      '...'
+    );
+
+    startTimeout();
+
+    localStream=
+      await navigator.mediaDevices.getUserMedia({
+        audio:true,
+        video:!!x.video
+      });
+
+    if(x.video){
+
+      $('local').srcObject=
+        localStream;
+
+      $('local')
+        .play()
+        .catch(()=>{});
+
+      showVideoMode();
+    }
+
+    makePeer(!!x.video);
+
+    localStream
+      .getTracks()
+      .forEach(t=>{
+        pc.addTrack(
+          t,
+          localStream
+        );
+      });
+
+    await pc.setRemoteDescription({
+      type:'offer',
+      sdp:x.sdp
+    });
+
+    await addPending();
+
+    const answer=
+      await pc.createAnswer();
+
+    await pc.setLocalDescription(
+      answer
+    );
+
+    sendSignal({
+      type:'answer',
+      sdp:pc.localDescription.sdp
+    });
+
+    setStatus(
+      x.video
+        ? 'VIDEO CONNECTING...'
+        : 'VOICE CONNECTING...'
+    );
+
+  }catch(e){
+
+    console.error(e);
+
+    hangup(false);
+
+    setStatus(
+      'CALL FAILED'
+    );
+  }
+}
+
+function rejectIncoming(){
+
+  const x=incomingOffer;
+
+  hideIncoming();
+
+  if(x){
+    sendSignal({
+      type:'reject',
+      from:x.from
+    });
+  }
+
+  setStatus(
+    'ONLINE'
+  );
+}async function signal(x){
   try{
     if(x.type==='offer'){
       if(pc||localStream){
@@ -988,9 +1346,207 @@ function hangup(send=true){
   if(ws&&ws.readyState===WebSocket.OPEN){
     setStatus('ONLINE');
   }
-}$('join').onclick=async()=>{name=$('name').value.trim();room=$('room').value.trim();if(!name||!room){alert('username and room_code required');return}sessionStorage.setItem('twochatName',name);sessionStorage.setItem('twochatRoom',room);$('setup').classList.add('hidden');$('chat').style.display='flex';setStatus('CONNECTING...');await history();const proto=location.protocol==='https:'?'wss':'ws';ws=new WebSocket(proto+'://'+location.host+'/ws?room='+encodeURIComponent(room)+'&name='+encodeURIComponent(name));ws.onopen=()=>setStatus('ONLINE');ws.onclose=()=>setStatus('DISCONNECTED');ws.onerror=()=>setStatus('CONNECTION ERROR');ws.onmessage=e=>{try{const x=JSON.parse(e.data);if(x.type==='message'||x.type==='attachment')add(x);else if(x.type==='peer')setStatus(x.online?'PEER ONLINE':'WAITING...');else if(['offer','answer','candidate','hangup','reject','busy'].includes(x.type))signal(x)}catch(err){console.error('WS message error',err)}}};$('send').onclick=send;$('attach').onclick=()=>$('file').click();$('file').onchange=uploadFile;$('voice').onclick=()=>startCall(false);$('video').onclick=()=>startCall(true);$('leave').onclick=()=>hangup();$('leave2').onclick=()=>hangup();$('accept').onclick=acceptIncoming;$('reject').onclick=rejectIncoming;const sn=sessionStorage.getItem('twochatName'),sr=sessionStorage.getItem('twochatRoom');if(sn)$('name').value=sn;if(sr)$('room').value=sr;
-</script></body></html>`;
-async function ensureAttachmentTable(env){await env.DB.prepare('CREATE TABLE IF NOT EXISTS attachments (id INTEGER PRIMARY KEY AUTOINCREMENT, room TEXT NOT NULL, sender TEXT NOT NULL, filename TEXT NOT NULL, mime_type TEXT NOT NULL, size INTEGER NOT NULL, data BLOB NOT NULL, created_at INTEGER NOT NULL)').run();await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_attachments_room_created ON attachments(room, created_at)').run()}async function ensureMessageReplyColumn(env){try{await env.DB.prepare('ALTER TABLE messages ADD COLUMN reply_to INTEGER').run()}catch{}}
+}$('join').onclick=async()=>{
+  name=$('name').value.trim();
+  room=$('room').value.trim();
+
+  if(!name||!room){
+    alert(
+      'username and room_code required'
+    );
+    return;
+  }
+
+  sessionStorage.setItem(
+    'twochatName',
+    name
+  );
+
+  sessionStorage.setItem(
+    'twochatRoom',
+    room
+  );
+
+  $('setup').classList.add(
+    'hidden'
+  );
+
+  $('chat').style.display='flex';
+
+  setStatus(
+    'CONNECTING...'
+  );
+
+  await history();
+
+  const proto=
+    location.protocol==='https:'
+      ?'wss'
+      :'ws';
+
+  ws=new WebSocket(
+    proto+
+    '://'+
+    location.host+
+    '/ws?room='+
+    encodeURIComponent(room)+
+    '&name='+
+    encodeURIComponent(name)
+  );
+
+  ws.onopen=()=>{
+    setStatus(
+      'ONLINE'
+    );
+  };
+
+  ws.onclose=()=>{
+    setStatus(
+      'DISCONNECTED'
+    );
+  };
+
+  ws.onerror=()=>{
+    setStatus(
+      'CONNECTION ERROR'
+    );
+  };
+
+  ws.onmessage=e=>{
+    try{
+
+      const x=
+        JSON.parse(e.data);
+
+      if(
+        x.type==='message'||
+        x.type==='attachment'
+      ){
+        add(x);
+
+      }else if(
+        x.type==='peer'
+      ){
+
+        setStatus(
+          x.online
+            ?'PEER ONLINE'
+            :'WAITING...'
+        );
+
+      }else if(
+        [
+          'offer',
+          'answer',
+          'candidate',
+          'hangup',
+          'reject',
+          'busy'
+        ].includes(x.type)
+      ){
+
+        signal(x);
+      }
+
+    }catch(err){
+
+      console.error(
+        'WS message error',
+        err
+      );
+    }
+  };
+};
+
+$('send').onclick=send;
+
+$('attach').onclick=()=>{
+  $('file').click();
+};
+
+$('file').onchange=
+  uploadFile;
+
+$('voice').onclick=()=>{
+  startCall(false);
+};
+
+$('video').onclick=()=>{
+  startCall(true);
+};
+
+$('leave').onclick=()=>{
+  hangup();
+};
+
+$('leave2').onclick=()=>{
+  hangup();
+};
+
+$('accept').onclick=
+  acceptIncoming;
+
+$('reject').onclick=
+  rejectIncoming;
+
+const sn=
+  sessionStorage.getItem(
+    'twochatName'
+  );
+
+const sr=
+  sessionStorage.getItem(
+    'twochatRoom'
+  );
+
+if(sn){
+  $('name').value=sn;
+}
+
+if(sr){
+  $('room').value=sr;
+}
+
+</script>
+
+</body>
+</html>
+`;
+
+async function ensureAttachmentTable(env){
+
+  await env.DB.prepare(`
+    CREATE TABLE IF NOT EXISTS attachments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      room TEXT NOT NULL,
+      sender TEXT NOT NULL,
+      filename TEXT NOT NULL,
+      mime_type TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      data BLOB NOT NULL,
+      created_at INTEGER NOT NULL
+    )
+  `).run();
+
+  await env.DB.prepare(`
+    CREATE INDEX IF NOT EXISTS
+    idx_attachments_room_created
+    ON attachments(room, created_at)
+  `).run();
+}
+
+async function ensureMessageReplyColumn(env){
+
+  try{
+
+    await env.DB.prepare(
+      'ALTER TABLE messages ADD COLUMN reply_to INTEGER'
+    ).run();
+
+  }catch{}
+
+}
+
 export default{
   async fetch(request,env){
     const url=new URL(request.url)
