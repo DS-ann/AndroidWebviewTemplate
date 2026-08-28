@@ -231,7 +231,6 @@ main{
   margin-top:3px;
 }
 
-.composer{
 .reply-bar{
   display:flex;
   align-items:center;
