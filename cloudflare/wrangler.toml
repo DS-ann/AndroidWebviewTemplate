@@ -5,7 +5,7 @@ compatibility_date = "2026-08-28"
 [[d1_databases]]
 binding = "DB"
 database_name = "twochat"
-database_id = "REPLACE_AFTER_CREATING_D1"
+database_id = "582f897d-f892-4fc6-8cee-ff7d8bdbc1b8"
 migrations_dir = "migrations"
 
 [[durable_objects.bindings]]
