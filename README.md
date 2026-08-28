@@ -4,4 +4,4 @@ When simplicity is the feature, **WebView delivers.**
 
 ## TwoChat
 
-TwoChat backend deployment trigger.
+Cloudflare backend configured with D1 and Durable Objects.
