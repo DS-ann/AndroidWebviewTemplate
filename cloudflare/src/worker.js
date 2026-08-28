@@ -56,7 +56,7 @@ main{
 }
 
 .brand:before{
-  content:"root@asus-vs-redmi:~$ ";
+  content:"#§$";
   color:#3d9f3d;
 }
 
