@@ -309,7 +309,7 @@ async function uploadFile(){
         'attachment is too large even after compression. Maximum is 1.4 MB.'
       )
 
-      input.value=''
+      input.value='' 
       setStatus('ONLINE')
       return
     }
