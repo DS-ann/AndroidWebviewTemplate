@@ -6,4 +6,4 @@ When simplicity is the feature, **WebView delivers.**
 
 Cloudflare backend configured with D1 and Durable Objects.
 
-Deployment trigger: 2026-08-28
+Deployment trigger: root directory fixed.
