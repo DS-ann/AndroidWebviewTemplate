@@ -1742,9 +1742,9 @@ function rejectIncoming(){
 
     }else if(x.type==='reject'){
       clearCallTimeout();
-      setStatus('CALL REJECTED BY '+(x.from||'PEER'));
       updateCallButton('failed');
       hangup(false);
+      setStatus('CALL REJECTED BY '+(x.from||'PEER'));
 
     }else if(x.type==='busy'){
       clearCallTimeout();
