@@ -163,7 +163,42 @@ main{
   text-align:left;
   overflow:hidden;
 }
+.message-actions{
+  display:none;
+  gap:5px;
+  position:absolute;
+  right:6px;
+  top:-34px;
+  z-index:20;
+  padding:4px;
+  background:#071007;
+  border:1px solid #397a39;
+}
 
+.msg.show-actions .message-actions{
+  display:flex;
+}
+
+.message-actions button{
+  padding:4px 7px;
+  background:#0c2d0c;
+  border:1px solid #397a39;
+  color:#9fff9f;
+  font:inherit;
+  font-size:10px;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+.message-actions .delete-message{
+  border-color:#a95555;
+  color:#ff9f9f;
+}
+
+.edited-label{
+  color:#6f9f6f;
+  font-size:10px;
+}
 .reply-who{
   display:block;
   font-weight:700;
@@ -693,123 +728,496 @@ $('cancelReply').onclick=cancelReply;
 function fmtSize(n){
   return n<1024?n+' B':n<1048576?(n/1024).toFixed(1)+' KB':(n/1048576).toFixed(2)+' MB'
 }
-
 function add(m){
-  const d=document.createElement('div')
-  d.className='msg '+(m.sender===name?'mine':'')
-  d.dataset.messageId=m.id
 
-  const time=m.created_at
-    ?new Date(Number(m.created_at)).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})
-    :'';
+  const d=document.createElement('div');
 
-  let replyHtml=''
+  d.className=
+    'msg '+
+    (m.sender===name?'mine':'');
 
-  if(m.reply_to&&m.reply_sender){
-    const replyText=m.reply_text||'attachment'
+  d.dataset.messageId=
+    String(m.id);
 
-    replyHtml=
-      '<div class="reply-preview" data-reply-id="'+esc(m.reply_to)+'">'+
-      '<span class="reply-who">'+esc(m.reply_sender)+'</span>'+
-      '<span class="reply-text">'+esc(replyText.slice(0,120))+'</span>'+
-      '</div>'
-  }
 
-  if(m.type==='attachment'){
-    d.innerHTML=
-      '<span class="who">'+esc(m.sender)+'</span>'+
-      replyHtml+
-      '<a class="attachment" target="_blank" rel="noopener" href="/api/attachments/'+
-      encodeURIComponent(m.id)+
-      '?room='+encodeURIComponent(room)+'">'+
-      '<span>[ '+esc(m.filename)+' ]</span>'+
-      '<small>'+esc(fmtSize(m.size))+' · expires in 2 days</small>'+
-      '<span class="msg-time">'+esc(time)+'</span>'+
-      '</a>'
-  }else{
-    d.innerHTML=
-      '<span class="who">'+esc(m.sender)+'</span>'+
-      replyHtml+
-      '<span class="msg-text">'+esc(m.text)+'</span>'+
-      '<span class="msg-time">'+esc(time)+'</span>'
-  }
+  const time=
+    m.created_at
+      ?new Date(
+          Number(m.created_at)
+        ).toLocaleTimeString(
+          [],
+          {
+            hour:'numeric',
+            minute:'2-digit'
+          }
+        )
+      :'';
 
-  let startX=0
-  let startY=0
-  let swiping=false
 
-  d.addEventListener('touchstart',e=>{
-    if(e.touches.length!==1)return
+  let replyHtml='';
 
-    startX=e.touches[0].clientX
-    startY=e.touches[0].clientY
-    swiping=false
 
-    d.classList.remove('reply-ready')
-  },{passive:true})
-
-  d.addEventListener('touchmove',e=>{
-    if(e.touches.length!==1)return
-
-    const dx=e.touches[0].clientX-startX
-    const dy=e.touches[0].clientY-startY
-
-    if(Math.abs(dy)>Math.abs(dx))return
-
-    if(dx>5){
-      swiping=true
-
-      const amount=Math.min(dx,80)
-
-      d.style.transform='translateX('+amount+'px)'
-      d.classList.toggle('reply-ready',dx>=55)
-    }
-  },{passive:true})
-
-  d.addEventListener('touchend',()=>{
+  /*
+   * Reply preview
+   */
 
   if(
-    swiping &&
-    d.classList.contains('reply-ready')
+    m.reply_to &&
+    m.reply_sender
   ){
-    showReplyBar(m);
+
+    const replyText=
+      String(
+        m.reply_text ||
+        'attachment'
+      );
+
+    replyHtml=
+      '<div '+
+      'class="reply-preview" '+
+      'data-reply-id="'+
+      esc(m.reply_to)+
+      '">'+
+
+      '<span class="reply-who">'+
+      esc(m.reply_sender)+
+      '</span>'+
+
+      '<span class="reply-text">'+
+      esc(
+        replyText.slice(0,120)
+      )+
+      '</span>'+
+
+      '</div>';
   }
 
-  d.style.transform='';
 
-  d.classList.remove('reply-ready');
+  /*
+   * Attachment message
+   */
 
-  swiping=false;
-});
+  if(
+    m.type==='attachment'
+  ){
 
-  d.querySelector('.reply-preview')?.addEventListener('click',()=>{
-    const targetId=
-      d.querySelector('.reply-preview').dataset.replyId
+    d.innerHTML=
 
-    const target=
-      document.querySelector(
-        '.msg[data-message-id="'+CSS.escape(targetId)+'"]'
-      )
+      '<span class="who">'+
+      esc(m.sender)+
+      '</span>'+
 
-    if(target){
+      replyHtml+
+
+      '<a '+
+      'class="attachment" '+
+      'target="_blank" '+
+      'rel="noopener" '+
+      'href="/api/attachments/'+
+      encodeURIComponent(m.id)+
+      '?room='+
+      encodeURIComponent(room)+
+      '">'+
+
+      '<span>[ '+
+      esc(m.filename)+
+      ' ]</span>'+
+
+      '<small>'+
+      esc(fmtSize(m.size))+
+      ' · expires in 2 days'+
+      '</small>'+
+
+      '<span class="msg-time">'+
+      esc(time)+
+      '</span>'+
+
+      '</a>';
+
+  }else{
+
+    /*
+     * Normal message
+     */
+
+    d.innerHTML=
+
+      '<span class="who">'+
+      esc(m.sender)+
+      '</span>'+
+
+      replyHtml+
+
+      '<span class="msg-text">'+
+      esc(m.text || '')+
+      '</span>'+
+
+      '<span class="msg-time">'+
+      esc(time)+
+      '</span>';
+  }
+
+if(
+  m.sender===name &&
+  m.type!=='attachment'
+){
+
+  const actions=
+    document.createElement('div');
+
+  actions.className=
+    'message-actions';
+
+  actions.innerHTML=`
+    <button
+      type="button"
+      class="edit-message"
+    >
+      [EDIT]
+    </button>
+
+    <button
+      type="button"
+      class="delete-message"
+    >
+      [DLT]
+    </button>
+  `;
+
+  d.appendChild(actions);
+
+
+  actions
+    .querySelector('.edit-message')
+    .addEventListener(
+      'click',
+      e=>{
+        e.stopPropagation();
+        editMessage(m);
+        d.classList.remove(
+          'show-actions'
+        );
+      }
+    );
+
+
+  actions
+    .querySelector('.delete-message')
+    .addEventListener(
+      'click',
+      e=>{
+        e.stopPropagation();
+        deleteMessage(m);
+        d.classList.remove(
+          'show-actions'
+        );
+      }
+    );
+
+
+  /*
+   * Long-press on your message
+   * to show EDIT / DLT.
+   */
+
+  let pressTimer=null;
+
+  d.addEventListener(
+    'touchstart',
+    e=>{
+
+      if(
+        e.touches.length!==1
+      ){
+        return;
+      }
+
+      pressTimer=
+        setTimeout(
+          ()=>{
+            d.classList.toggle(
+              'show-actions'
+            );
+          },
+          600
+        );
+
+    },
+    {
+      passive:true
+    }
+  );
+
+
+  d.addEventListener(
+    'touchend',
+    ()=>{
+      clearTimeout(
+        pressTimer
+      );
+    }
+  );
+
+
+  d.addEventListener(
+    'touchmove',
+    ()=>{
+      clearTimeout(
+        pressTimer
+      );
+    },
+    {
+      passive:true
+    }
+  );
+
+}
+  /*
+   * Swipe-to-reply
+   */
+
+  let startX=0;
+  let startY=0;
+  let swiping=false;
+
+
+  d.addEventListener(
+    'touchstart',
+    e=>{
+
+      if(
+        e.touches.length!==1
+      ){
+        return;
+      }
+
+      startX=
+        e.touches[0].clientX;
+
+      startY=
+        e.touches[0].clientY;
+
+      swiping=false;
+
+      d.style.transform='';
+
+      d.classList.remove(
+        'reply-ready'
+      );
+
+    },
+    {
+      passive:true
+    }
+  );
+
+
+  d.addEventListener(
+    'touchmove',
+    e=>{
+
+      if(
+        e.touches.length!==1
+      ){
+        return;
+      }
+
+      const dx=
+        e.touches[0].clientX-
+        startX;
+
+      const dy=
+        e.touches[0].clientY-
+        startY;
+
+
+      /*
+       * Ignore vertical scrolling.
+       */
+
+      if(
+        Math.abs(dy)>
+        Math.abs(dx)
+      ){
+
+        swiping=false;
+
+        d.style.transform='';
+
+        d.classList.remove(
+          'reply-ready'
+        );
+
+        return;
+      }
+
+
+      /*
+       * Only swipe to the right.
+       */
+
+      if(dx<=5){
+
+        d.style.transform='';
+
+        d.classList.remove(
+          'reply-ready'
+        );
+
+        return;
+      }
+
+
+      swiping=true;
+
+
+      const amount=
+        Math.min(
+          dx,
+          80
+        );
+
+
+      d.style.transform=
+        'translateX('+
+        amount+
+        'px)';
+
+
+      d.classList.toggle(
+        'reply-ready',
+        dx>=55
+      );
+
+    },
+    {
+      passive:true
+    }
+  );
+
+
+  d.addEventListener(
+    'touchend',
+    ()=>{
+
+      if(
+        swiping &&
+        d.classList.contains(
+          'reply-ready'
+        )
+      ){
+
+        showReplyBar(m);
+      }
+
+
+      d.style.transform='';
+
+      d.classList.remove(
+        'reply-ready'
+      );
+
+      swiping=false;
+
+    }
+  );
+
+
+  d.addEventListener(
+    'touchcancel',
+    ()=>{
+
+      d.style.transform='';
+
+      d.classList.remove(
+        'reply-ready'
+      );
+
+      swiping=false;
+
+    }
+  );
+
+
+  /*
+   * Click reply preview
+   * to jump to original message.
+   */
+
+  d.querySelector(
+    '.reply-preview'
+  )?.addEventListener(
+    'click',
+    ()=>{
+
+      const preview=
+        d.querySelector(
+          '.reply-preview'
+        );
+
+      if(!preview){
+        return;
+      }
+
+
+      const targetId=
+        preview.dataset.replyId;
+
+
+      const target=
+        document.querySelector(
+          '.msg[data-message-id="'+
+          CSS.escape(
+            String(targetId)
+          )+
+          '"]'
+        );
+
+
+      if(!target){
+        return;
+      }
+
+
       target.scrollIntoView({
         behavior:'smooth',
         block:'center'
-      })
+      });
 
-      target.classList.add('reply-highlight')
 
-      setTimeout(()=>{
-        target.classList.remove('reply-highlight')
-      },1200)
+      target.classList.add(
+        'reply-highlight'
+      );
+
+
+      setTimeout(
+        ()=>{
+          target.classList.remove(
+            'reply-highlight'
+          );
+        },
+        1200
+      );
+
     }
-  })
+  );
 
-  $('messages').appendChild(d)
 
-  requestAnimationFrame(()=>{
-    $('messages').scrollTop=$('messages').scrollHeight
-  })
+  /*
+   * Add message to chat.
+   */
+
+  $('messages')
+    .appendChild(d);
+
+
+  requestAnimationFrame(
+    ()=>{
+      $('messages').scrollTop=
+        $('messages').scrollHeight;
+    }
+  );
+
 }
 
 async function history(){
@@ -1477,50 +1885,119 @@ function hangup(send=true){
     );
   };
 
-  ws.onmessage=e=>{
-    try{
+ws.onmessage=e=>{
+  try{
 
-      const x=
-        JSON.parse(e.data);
+    const x=
+      JSON.parse(e.data);
 
-      if(
-        x.type==='message'||
-        x.type==='attachment'
-      ){
-        add(x);
 
-      }else if(
-        x.type==='peer'
-      ){
+    if(
+      x.type==='message'||
+      x.type==='attachment'
+    ){
 
-        setStatus(
-          x.online
-            ?'PEER ONLINE'
-            :'WAITING...'
+      add(x);
+
+
+    }else if(
+      x.type==='peer'
+    ){
+
+      setStatus(
+        x.online
+          ?'PEER ONLINE'
+          :'WAITING...'
+      );
+
+
+    }else if(
+      x.type==='message_edit'
+    ){
+
+      const target=
+        document.querySelector(
+          '.msg[data-message-id="'+
+          CSS.escape(
+            String(x.id)
+          )+
+          '"]'
         );
 
-      }else if(
-        [
-          'offer',
-          'answer',
-          'candidate',
-          'hangup',
-          'reject',
-          'busy'
-        ].includes(x.type)
-      ){
+      if(target){
 
-        signal(x);
+        const textEl=
+          target.querySelector(
+            '.msg-text'
+          );
+
+        if(textEl){
+
+          textEl.textContent=
+            x.text||'';
+
+          const edited=
+            document.createElement(
+              'span'
+            );
+
+          edited.className=
+            'edited-label';
+
+          edited.textContent=
+            ' (edited)';
+
+          textEl.appendChild(
+            edited
+          );
+        }
       }
 
-    }catch(err){
 
-      console.error(
-        'WS message error',
-        err
-      );
+    }else if(
+      x.type==='message_delete'
+    ){
+
+      const target=
+        document.querySelector(
+          '.msg[data-message-id="'+
+          CSS.escape(
+            String(x.id)
+          )+
+          '"]'
+        );
+
+      if(target){
+
+        target.remove();
+
+      }
+
+
+    }else if(
+      [
+        'offer',
+        'answer',
+        'candidate',
+        'hangup',
+        'reject',
+        'busy'
+      ].includes(x.type)
+    ){
+
+      signal(x);
+
     }
-  };
+
+  }catch(err){
+
+    console.error(
+      'WS message error',
+      err
+    );
+
+  }
+};
 };
 
 $('send').onclick=send;
@@ -1577,7 +2054,131 @@ if(sr){
 </body>
 </html>
 `;
+async function editMessage(m){
 
+  const oldText=
+    String(m.text||'');
+
+  const newText=
+    prompt(
+      'Edit message:',
+      oldText
+    );
+
+  if(newText===null){
+    return;
+  }
+
+  const text=
+    newText.trim();
+
+  if(!text){
+    return;
+  }
+
+  if(text===oldText){
+    return;
+  }
+
+  try{
+
+    const r=
+      await fetch(
+        '/api/messages/edit',
+        {
+          method:'POST',
+          headers:{
+            'content-type':
+              'application/json'
+          },
+          body:
+            JSON.stringify({
+              room,
+              name,
+              id:Number(m.id),
+              text
+            })
+        }
+      );
+
+    const result=
+      await r.json();
+
+    if(!r.ok){
+      throw new Error(
+        result.error||
+        'edit failed'
+      );
+    }
+
+  }catch(e){
+
+    console.error(
+      'edit message',
+      e
+    );
+
+    alert(
+      e.message||
+      'message edit failed'
+    );
+
+  }
+}
+async function deleteMessage(m){
+
+  if(
+    !confirm(
+      'Delete this message?'
+    )
+  ){
+    return;
+  }
+
+  try{
+
+    const r=
+      await fetch(
+        '/api/messages/delete',
+        {
+          method:'POST',
+          headers:{
+            'content-type':
+              'application/json'
+          },
+          body:
+            JSON.stringify({
+              room,
+              name,
+              id:Number(m.id)
+            })
+        }
+      );
+
+    const result=
+      await r.json();
+
+    if(!r.ok){
+      throw new Error(
+        result.error||
+        'delete failed'
+      );
+    }
+
+  }catch(e){
+
+    console.error(
+      'delete message',
+      e
+    );
+
+    alert(
+      e.message||
+      'message delete failed'
+    );
+
+  }
+}
 async function ensureAttachmentTable(env){
 
   await env.DB.prepare(`
@@ -1611,7 +2212,32 @@ async function ensureMessageReplyColumn(env){
   }catch{}
 
 }
+async function ensureMessageEditColumn(env){
 
+  try{
+
+    await env.DB.prepare(
+      'ALTER TABLE messages ADD COLUMN edited_at INTEGER'
+    ).run();
+
+  }catch(e){
+
+    if(
+      !String(e.message)
+        .toLowerCase()
+        .includes('duplicate')
+    ){
+
+      console.error(
+        'edited_at column check',
+        e
+      );
+
+    }
+
+  }
+
+}
 export default{
   async fetch(request,env){
     const url=new URL(request.url)
@@ -1677,7 +2303,7 @@ export default{
 
       await ensureAttachmentTable(env)
       await ensureMessageReplyColumn(env)
-
+      await ensureMessageEditColumn(env);
       const [mr,ar]=await Promise.all([
 
         env.DB.prepare(`
@@ -1756,6 +2382,7 @@ export default{
       }
 
       await ensureMessageReplyColumn(env)
+      await ensureMessageEditColumn(env);
 
       const room=clean(b.room)
       const sender=clean(b.name)
