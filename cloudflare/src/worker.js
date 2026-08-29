@@ -1442,13 +1442,16 @@ function makePeer(video){
   };
 
   pc.ontrack=e=>{
-    if(video){
-      $('remote').srcObject=e.streams[0];
-      $('remote').play().catch(()=>{});
-      showVideoMode();
-    }
-    setStatus(video?'VIDEO CONNECTING...':'VOICE CONNECTING...');
-  };
+  $('remote').srcObject=e.streams[0];
+
+  $('remote').play().catch(()=>{});
+
+  if(video){
+    showVideoMode();
+  }
+
+  setStatus(video?'VIDEO CONNECTING...':'VOICE CONNECTING...');
+};
 
   pc.onconnectionstatechange=()=>{
     const s=pc?.connectionState;
