@@ -868,21 +868,18 @@ if(
   actions.className=
     'message-actions';
 
-  actions.innerHTML = `
-  <button
-    type="button"
-    class="edit-message"
-  >
-    [EDIT]
-  </button>
+  actions.innerHTML =
+  '<button ' +
+  'type="button" ' +
+  'class="edit-message">' +
+  '[EDIT]' +
+  '</button>' +
 
-  <button
-    type="button"
-    class="delete-message"
-  >
-    [DLT]
-  </button>
-`;
+  '<button ' +
+  'type="button" ' +
+  'class="delete-message">' +
+  '[DLT]' +
+  '</button>';
 
   d.appendChild(actions);
 
