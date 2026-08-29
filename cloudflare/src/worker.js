@@ -1551,23 +1551,20 @@ async function startCall(video){
 
     updateCallButton('waiting');
 
-    }catch(e){
+      }catch(e){
 
-    console.error(
-      'getUserMedia failed:',
-      e.name,
-      e.message,
-      e
-    );
+    console.error(e);
 
     hangup(false);
 
     setStatus('CALL FAILED');
 
     alert(
-      'getUserMedia failed:\n\n' +
-      'Error: ' + (e.name || 'UnknownError') +
-      '\nMessage: ' + (e.message || 'No message')
+      (video
+        ? 'Camera and microphone'
+        : 'Microphone'
+      )+
+      ' permission is required for calling.'
     );
   }
 }
