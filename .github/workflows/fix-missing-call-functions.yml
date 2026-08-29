@@ -1,0 +1,55 @@
+name: Restore missing call functions
+
+on:
+  push:
+    paths:
+      - .github/workflows/fix-missing-call-functions.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Restore missing functions
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('cloudflare/src/worker.js')
+          text = path.read_text(encoding='utf-8')
+
+          if 'function updateCallButton(state)' not in text:
+              marker = "function sendSignal(x){"
+              start = text.find(marker)
+              if start < 0:
+                  raise SystemExit('sendSignal marker not found')
+
+              end = text.find('}\n', start)
+              if end < 0:
+                  raise SystemExit('sendSignal end not found')
+              end += 2
+
+              functions = '''\nfunction updateCallButton(state){\n  const b=callKind==='video'?$('video'):$('voice');\n  if(!b)return;\n\n  const labels={\n    connecting:'[connecting...]',\n    connected:callKind==='video'?'[connected v]':'[connected a]',\n    failed:'[call failed]',\n    waiting:'[calling...]',\n    idle:callKind==='video'?'[start v...]':'[start a...]'\n  };\n\n  b.textContent=labels[state]||labels.idle;\n}\n\nfunction showIncoming(x){\n  incomingOffer=x;\n  incomingCaller=x.from||'unknown';\n\n  $('caller').textContent=\n    '['+(x.video?'video':'voice')+' call from '+incomingCaller+']';\n\n  $('incoming').style.display='block';\n  setStatus('INCOMING CALL');\n}\n'''
+
+              text = text[:end] + functions + text[end:]
+
+          path.write_text(text, encoding='utf-8')
+
+      - name: Remove temporary workflow and commit
+        shell: bash
+        run: |
+          rm -f .github/workflows/fix-missing-call-functions.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cloudflare/src/worker.js .github/workflows/fix-missing-call-functions.yml
+          if git diff --cached --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git commit -m "Restore missing WebRTC call UI functions"
+          git push
