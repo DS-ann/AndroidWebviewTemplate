@@ -856,160 +856,153 @@ function add(m){
       esc(time)+
       '</span>';
   }
+  if(
+    m.sender===name &&
+    m.type!=='attachment'
+  ){
+
+    const actions=
+      document.createElement('div');
+
+    actions.className=
+      'message-actions';
+
+    actions.innerHTML=`
+      <button
+        type="button"
+        class="edit-message"
+      >
+        [EDIT]
+      </button>
+
+      <button
+        type="button"
+        class="delete-message"
+      >
+        [DLT]
+      </button>
+    `;
+
+    d.appendChild(actions);
 
 
-        if(
-  m.sender===name &&
-  m.type!=='attachment'
-){
-
-  const actions =
-    document.createElement('div');
-
-  actions.className =
-    'message-actions';
-
-  actions.innerHTML =
-    '<button ' +
-    'type="button" ' +
-    'class="edit-message">' +
-    '[EDIT]' +
-    '</button>' +
-
-    '<button ' +
-    'type="button" ' +
-    'class="delete-message">' +
-    '[DLT]' +
-    '</button>';
-
-  d.appendChild(actions);
-
-
-  const editButton =
-    actions.querySelector(
-      '.edit-message'
-    );
-
-  const deleteButton =
-    actions.querySelector(
-      '.delete-message'
-    );
-
-
-  editButton.addEventListener(
-    'click',
-    e=>{
-      e.preventDefault();
-      e.stopPropagation();
-
-      editMessage(m);
-
-      d.classList.remove(
-        'show-actions'
+    const editButton=
+      actions.querySelector(
+        '.edit-message'
       );
-    }
-  );
 
-
-  deleteButton.addEventListener(
-    'click',
-    e=>{
-      e.preventDefault();
-      e.stopPropagation();
-
-      deleteMessage(m);
-
-      d.classList.remove(
-        'show-actions'
+    const deleteButton=
+      actions.querySelector(
+        '.delete-message'
       );
-    }
-  );
 
 
-  let pressTimer =
-    null;
+    editButton.addEventListener(
+      'click',
+      e=>{
+        e.preventDefault();
+        e.stopPropagation();
 
-  let moved =
-    false;
-
-
-  d.addEventListener(
-    'touchstart',
-    e=>{
-
-      if(
-        e.touches.length!==1
-      ){
-        return;
+        editMessage(m);
       }
+    );
 
-      moved=false;
 
-      clearTimeout(
-        pressTimer
-      );
+    deleteButton.addEventListener(
+      'click',
+      e=>{
+        e.preventDefault();
+        e.stopPropagation();
 
-      pressTimer =
-        setTimeout(
-          ()=>{
-            if(!moved){
-              d.classList.toggle(
-                'show-actions'
-              );
-            }
-          },
-          600
+        deleteMessage(m);
+      }
+    );
+
+
+    let pressTimer=null;
+    let pressMoved=false;
+
+
+    d.addEventListener(
+      'touchstart',
+      e=>{
+        if(
+          e.touches.length!==1
+        ){
+          return;
+        }
+
+        pressMoved=false;
+
+        clearTimeout(
+          pressTimer
         );
-    },
-    {
-      passive:true
-    }
-  );
+
+        pressTimer=
+          setTimeout(
+            ()=>{
+              if(!pressMoved){
+                d.classList.toggle(
+                  'show-actions'
+                );
+              }
+            },
+            600
+          );
+      },
+      {
+        passive:true
+      }
+    );
 
 
-  d.addEventListener(
-    'touchmove',
-    ()=>{
-      moved=true;
+    d.addEventListener(
+      'touchmove',
+      e=>{
+        if(
+          e.touches.length!==1
+        ){
+          return;
+        }
 
-      clearTimeout(
-        pressTimer
-      );
-    },
-    {
-      passive:true
-    }
-  );
+        pressMoved=true;
 
-
-  d.addEventListener(
-    'touchend',
-    ()=>{
-      clearTimeout(
-        pressTimer
-      );
-    },
-    {
-      passive:true
-    }
-  );
+        clearTimeout(
+          pressTimer
+        );
+      },
+      {
+        passive:true
+      }
+    );
 
 
-  d.addEventListener(
-    'touchcancel',
-    ()=>{
-      clearTimeout(
-        pressTimer
-      );
-    },
-    {
-      passive:true
-    }
-  );
-}
-  /*
-   * Swipe-to-reply
-   */
+    d.addEventListener(
+      'touchend',
+      ()=>{
+        clearTimeout(
+          pressTimer
+        );
+      },
+      {
+        passive:true
+      }
+    );
+
+
+    d.addEventListener(
+      'touchcancel',
+      ()=>{
+        clearTimeout(
+          pressTimer
+        );
+      },
+      {
+        passive:true
+      }
+    );
+  }
+
 
   let startX=0;
   let startY=0;
@@ -1019,7 +1012,6 @@ function add(m){
   d.addEventListener(
     'touchstart',
     e=>{
-
       if(
         e.touches.length!==1
       ){
@@ -1034,12 +1026,9 @@ function add(m){
 
       swiping=false;
 
-      d.style.transform='';
-
       d.classList.remove(
         'reply-ready'
       );
-
     },
     {
       passive:true
@@ -1050,7 +1039,6 @@ function add(m){
   d.addEventListener(
     'touchmove',
     e=>{
-
       if(
         e.touches.length!==1
       ){
@@ -1066,64 +1054,34 @@ function add(m){
         startY;
 
 
-      /*
-       * Ignore vertical scrolling.
-       */
-
       if(
         Math.abs(dy)>
         Math.abs(dx)
       ){
-
-        swiping=false;
-
-        d.style.transform='';
-
-        d.classList.remove(
-          'reply-ready'
-        );
-
         return;
       }
 
 
-      /*
-       * Only swipe to the right.
-       */
+      if(dx>5){
 
-      if(dx<=5){
+        swiping=true;
 
-        d.style.transform='';
+        const amount=
+          Math.min(
+            dx,
+            80
+          );
 
-        d.classList.remove(
-          'reply-ready'
+        d.style.transform=
+          'translateX('+
+          amount+
+          'px)';
+
+        d.classList.toggle(
+          'reply-ready',
+          dx>=55
         );
-
-        return;
       }
-
-
-      swiping=true;
-
-
-      const amount=
-        Math.min(
-          dx,
-          80
-        );
-
-
-      d.style.transform=
-        'translateX('+
-        amount+
-        'px)';
-
-
-      d.classList.toggle(
-        'reply-ready',
-        dx>=55
-      );
-
     },
     {
       passive:true
@@ -1134,17 +1092,14 @@ function add(m){
   d.addEventListener(
     'touchend',
     ()=>{
-
       if(
         swiping &&
         d.classList.contains(
           'reply-ready'
         )
       ){
-
         showReplyBar(m);
       }
-
 
       d.style.transform='';
 
@@ -1153,11 +1108,8 @@ function add(m){
       );
 
       swiping=false;
-
     }
   );
-
-
   d.addEventListener(
     'touchcancel',
     ()=>{
