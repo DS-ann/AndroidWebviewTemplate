@@ -1,3 +1,4 @@
+
 const CORS={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"Content-Type","Access-Control-Allow-Methods":"GET,POST,OPTIONS"};
 const MAX_ATTACHMENT_BYTES=1400000;
 const HTML=`
@@ -1551,23 +1552,27 @@ async function startCall(video){
 
     updateCallButton('waiting');
 
-  }catch(e){
+    }catch(e){
 
-    console.error(e);
+    console.error(
+      'getUserMedia failed:',
+      e.name,
+      e.message,
+      e
+    );
 
     hangup(false);
 
     setStatus('CALL FAILED');
 
     alert(
-      (video
-        ? 'Camera and microphone'
-        : 'Microphone'
-      )+
-      ' permission is required for calling.'
+      'getUserMedia failed:\n\n' +
+      'Error: ' + (e.name || 'UnknownError') +
+      '\nMessage: ' + (e.message || 'No message')
     );
   }
-}
+  }
+  
 
 async function acceptIncoming(){
   const x=incomingOffer;
