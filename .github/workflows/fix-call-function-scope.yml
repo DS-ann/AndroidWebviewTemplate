@@ -1,0 +1,37 @@
+name: Fix call function scope
+
+on:
+  push:
+    paths:
+      - .github/workflows/fix-call-function-scope.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix scope
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('cloudflare/src/worker.js')
+          s=p.read_text(encoding='utf-8')
+          start=s.find('function sendSignal(x){')
+          end=s.find('function startTimeout()', start)
+          if start<0 or end<0:
+              raise SystemExit('call function section not found')
+          block='''function sendSignal(x){\n  if(\n    ws&&\n    ws.readyState===WebSocket.OPEN\n  ){\n    ws.send(JSON.stringify(x))\n  }\n}\n\nfunction updateCallButton(state){\n  const b=callKind==='video'?$('video'):$('voice');\n  if(!b)return;\n\n  const labels={\n    connecting:'[connecting...]',\n    connected:callKind==='video'?'[connected v]':'[connected a]',\n    failed:'[call failed]',\n    waiting:'[calling...]',\n    idle:callKind==='video'?'[start v...]':'[start a...]'\n  };\n\n  b.textContent=labels[state]||labels.idle;\n}\n\nfunction showIncoming(x){\n  incomingOffer=x;\n  incomingCaller=x.from||'unknown';\n\n  $('caller').textContent=\n    '['+(x.video?'video':'voice')+' call from '+incomingCaller+']';\n\n  $('incoming').style.display='block';\n  setStatus('INCOMING CALL');\n}\n\nfunction hideIncoming(){incomingOffer=null;incomingCaller='';$('incoming').style.display='none'}\n\n'''
+          s=s[:start]+block+s[end:]
+          p.write_text(s,encoding='utf-8')
+      - name: Commit and remove temporary workflow
+        shell: bash
+        run: |
+          rm -f .github/workflows/fix-call-function-scope.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cloudflare/src/worker.js .github/workflows/fix-call-function-scope.yml
+          git commit -m "Fix WebRTC call function scope"
+          git push
