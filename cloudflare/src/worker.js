@@ -1246,8 +1246,7 @@ async function send(){
     return
   }
 
-  replyTo=null
-  $('text').placeholder='type_message...'
+  cancelReply()
 }
 
 async function uploadFile(){
