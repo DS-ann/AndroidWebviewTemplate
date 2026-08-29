@@ -1397,6 +1397,32 @@ function sendSignal(x){
   ){
     ws.send(JSON.stringify(x))
   }
+
+function updateCallButton(state){
+  const b=callKind==='video'?$('video'):$('voice');
+  if(!b)return;
+
+  const labels={
+    connecting:'[connecting...]',
+    connected:callKind==='video'?'[connected v]':'[connected a]',
+    failed:'[call failed]',
+    waiting:'[calling...]',
+    idle:callKind==='video'?'[start v...]':'[start a...]'
+  };
+
+  b.textContent=labels[state]||labels.idle;
+}
+
+function showIncoming(x){
+  incomingOffer=x;
+  incomingCaller=x.from||'unknown';
+
+  $('caller').textContent=
+    '['+(x.video?'video':'voice')+' call from '+incomingCaller+']';
+
+  $('incoming').style.display='block';
+  setStatus('INCOMING CALL');
+}
 }function hideIncoming(){incomingOffer=null;incomingCaller='';$('incoming').style.display='none'}
 function startTimeout(){clearTimeout(callTimeout);callTimeout=setTimeout(()=>{if(pc&&pc.connectionState!=='connected'){setStatus('CALL TIMEOUT');updateCallButton('failed');hangup(false)}},30000)}function clearCallTimeout(){if(callTimeout){clearTimeout(callTimeout);callTimeout=null}}
 function showVideoMode(){if(callKind==='video'){$('chat').classList.add('video-mode');$('callinfo').textContent='[ VIDEO CALL ]'}}function hideVideoMode(){$('chat').classList.remove('video-mode');$('remote').srcObject=null;$('local').srcObject=null}
