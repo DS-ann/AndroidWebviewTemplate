@@ -164,7 +164,7 @@ main{
   overflow:hidden;
 }
 .message-actions{
-  display:none;
+  display:flex;
   gap:6px;
   margin-top:6px;
   padding-top:5px;
