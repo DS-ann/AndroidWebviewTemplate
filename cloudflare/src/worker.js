@@ -1570,8 +1570,6 @@ async function startCall(video){
       '\nMessage: ' + (e.message || 'No message')
     );
   }
-  }
-  
 
 async function acceptIncoming(){
   const x=incomingOffer;
