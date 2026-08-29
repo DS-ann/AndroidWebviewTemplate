@@ -857,67 +857,81 @@ function add(m){
       '</span>';
   }
 
-if(
+
+        if(
   m.sender===name &&
   m.type!=='attachment'
 ){
 
-  const actions=
+  const actions =
     document.createElement('div');
 
-  actions.className=
+  actions.className =
     'message-actions';
 
   actions.innerHTML =
-  '<button ' +
-  'type="button" ' +
-  'class="edit-message">' +
-  '[EDIT]' +
-  '</button>' +
+    '<button ' +
+    'type="button" ' +
+    'class="edit-message">' +
+    '[EDIT]' +
+    '</button>' +
 
-  '<button ' +
-  'type="button" ' +
-  'class="delete-message">' +
-  '[DLT]' +
-  '</button>';
+    '<button ' +
+    'type="button" ' +
+    'class="delete-message">' +
+    '[DLT]' +
+    '</button>';
 
   d.appendChild(actions);
 
 
-  actions
-    .querySelector('.edit-message')
-    .addEventListener(
-      'click',
-      e=>{
-        e.stopPropagation();
-        editMessage(m);
-        d.classList.remove(
-          'show-actions'
-        );
-      }
+  const editButton =
+    actions.querySelector(
+      '.edit-message'
+    );
+
+  const deleteButton =
+    actions.querySelector(
+      '.delete-message'
     );
 
 
-  actions
-    .querySelector('.delete-message')
-    .addEventListener(
-      'click',
-      e=>{
-        e.stopPropagation();
-        deleteMessage(m);
-        d.classList.remove(
-          'show-actions'
-        );
-      }
-    );
+  editButton.addEventListener(
+    'click',
+    e=>{
+      e.preventDefault();
+      e.stopPropagation();
+
+      editMessage(m);
+
+      d.classList.remove(
+        'show-actions'
+      );
+    }
+  );
 
 
-  /*
-   * Long-press on your message
-   * to show EDIT / DLT.
-   */
+  deleteButton.addEventListener(
+    'click',
+    e=>{
+      e.preventDefault();
+      e.stopPropagation();
 
-  let pressTimer=null;
+      deleteMessage(m);
+
+      d.classList.remove(
+        'show-actions'
+      );
+    }
+  );
+
+
+  let pressTimer =
+    null;
+
+  let moved =
+    false;
+
 
   d.addEventListener(
     'touchstart',
@@ -929,16 +943,38 @@ if(
         return;
       }
 
-      pressTimer=
+      moved=false;
+
+      clearTimeout(
+        pressTimer
+      );
+
+      pressTimer =
         setTimeout(
           ()=>{
-            d.classList.toggle(
-              'show-actions'
-            );
+            if(!moved){
+              d.classList.toggle(
+                'show-actions'
+              );
+            }
           },
           600
         );
+    },
+    {
+      passive:true
+    }
+  );
 
+
+  d.addEventListener(
+    'touchmove',
+    ()=>{
+      moved=true;
+
+      clearTimeout(
+        pressTimer
+      );
     },
     {
       passive:true
@@ -952,12 +988,15 @@ if(
       clearTimeout(
         pressTimer
       );
+    },
+    {
+      passive:true
     }
   );
 
 
   d.addEventListener(
-    'touchmove',
+    'touchcancel',
     ()=>{
       clearTimeout(
         pressTimer
@@ -967,7 +1006,6 @@ if(
       passive:true
     }
   );
-
 }
   /*
    * Swipe-to-reply
@@ -2045,7 +2083,150 @@ if(sn){
 if(sr){
   $('room').value=sr;
 }
+async function editMessage(m){
+  if(!m || m.sender!==name)return;
 
+  const current=
+    m.text||'';
+
+  const next=
+    prompt(
+      'Edit message:',
+      current
+    );
+
+  if(
+    next===null ||
+    !next.trim() ||
+    next===current
+  ){
+    return;
+  }
+
+  try{
+    const res=
+      await fetch(
+        '/api/messages/edit',
+        {
+          method:'POST',
+          headers:{
+            'Content-Type':
+              'application/json'
+          },
+          body:JSON.stringify({
+            id:m.id,
+            room:room,
+            name:name,
+            text:next.trim()
+          })
+        }
+      );
+
+    const data=
+      await res.json();
+
+    if(!res.ok){
+      throw new Error(
+        data.error||
+        'Edit failed'
+      );
+    }
+
+    const msg=
+      document.querySelector(
+        '.msg[data-message-id="'+
+        CSS.escape(String(m.id))+
+        '"]'
+      );
+
+    if(msg){
+      const text=
+        msg.querySelector(
+          '.msg-text'
+        );
+
+      if(text){
+        text.textContent=
+          next.trim();
+      }
+    }
+
+  }catch(e){
+    console.error(
+      'edit message error',
+      e
+    );
+
+    alert(
+      e.message||
+      'Could not edit message.'
+    );
+  }
+}
+
+
+async function deleteMessage(m){
+  if(!m || m.sender!==name)return;
+
+  if(
+    !confirm(
+      'Delete this message?'
+    )
+  ){
+    return;
+  }
+
+  try{
+    const res=
+      await fetch(
+        '/api/messages/delete',
+        {
+          method:'POST',
+          headers:{
+            'Content-Type':
+              'application/json'
+          },
+          body:JSON.stringify({
+            id:m.id,
+            room:room,
+            name:name
+          })
+        }
+      );
+
+    const data=
+      await res.json();
+
+    if(!res.ok){
+      throw new Error(
+        data.error||
+        'Delete failed'
+      );
+    }
+
+    const msg=
+      document.querySelector(
+        '.msg[data-message-id="'+
+        CSS.escape(String(m.id))+
+        '"]'
+      );
+
+    if(msg){
+      msg.remove();
+    }
+
+  }catch(e){
+    console.error(
+      'delete message error',
+      e
+    );
+
+    alert(
+      e.message||
+      'Could not delete message.'
+    );
+  }
+}
 </script>
 
 </body>
@@ -2476,7 +2657,243 @@ export default{
         201
       )
     }
+    if (
+  url.pathname === '/api/messages/edit' &&
+  request.method === 'POST'
+) {
+  try {
+    const b =
+      await request.json();
 
+    const id =
+      Number(b.id);
+
+    const room =
+      clean(b.room);
+
+    const sender =
+      clean(b.name);
+
+    const text =
+      String(b.text || '')
+        .trim()
+        .slice(0, 2000);
+
+    if (
+      !Number.isInteger(id) ||
+      !room ||
+      !sender ||
+      !text
+    ) {
+      return json(
+        {
+          error:
+            'id, room, name and text required'
+        },
+        400
+      );
+    }
+
+    const message =
+      await env.DB.prepare(`
+        SELECT
+          id,
+          sender,
+          room,
+          type
+        FROM messages
+        WHERE id = ?
+          AND room = ?
+        LIMIT 1
+      `)
+      .bind(
+        id,
+        room
+      )
+      .first();
+
+    if (!message) {
+      return json(
+        {
+          error:
+            'message not found'
+        },
+        404
+      );
+    }
+
+    if (
+      message.sender !== sender
+    ) {
+      return json(
+        {
+          error:
+            'not allowed'
+        },
+        403
+      );
+    }
+
+    if (
+      message.type ===
+      'attachment'
+    ) {
+      return json(
+        {
+          error:
+            'attachments cannot be edited'
+        },
+        400
+      );
+    }
+
+    const editedAt =
+      Date.now();
+
+    await env.DB.prepare(`
+      UPDATE messages
+      SET
+        text = ?,
+        edited_at = ?
+      WHERE id = ?
+        AND room = ?
+    `)
+      .bind(
+        text,
+        editedAt,
+        id,
+        room
+      )
+      .run();
+
+    return json({
+      ok:true,
+      id:id,
+      room:room,
+      sender:sender,
+      text:text,
+      edited_at:editedAt
+    });
+
+  }catch(e){
+
+    console.error(
+      'message edit error',
+      e
+    );
+
+    return json(
+      {
+        error:
+          'edit failed'
+      },
+      500
+    );
+  }
+    }
+    if (
+  url.pathname === '/api/messages/delete' &&
+  request.method === 'POST'
+) {
+  try {
+    const b =
+      await request.json();
+
+    const id =
+      Number(b.id);
+
+    const room =
+      clean(b.room);
+
+    const sender =
+      clean(b.name);
+
+    if (
+      !Number.isInteger(id) ||
+      !room ||
+      !sender
+    ) {
+      return json(
+        {
+          error:
+            'id, room and name required'
+        },
+        400
+      );
+    }
+
+    const message =
+      await env.DB.prepare(`
+        SELECT
+          id,
+          sender,
+          room,
+          type
+        FROM messages
+        WHERE id = ?
+          AND room = ?
+        LIMIT 1
+      `)
+      .bind(
+        id,
+        room
+      )
+      .first();
+
+    if (!message) {
+      return json(
+        {
+          error:
+            'message not found'
+        },
+        404
+      );
+    }
+
+    if (
+      message.sender !== sender
+    ) {
+      return json(
+        {
+          error:
+            'not allowed'
+        },
+        403
+      );
+    }
+
+    await env.DB.prepare(`
+      DELETE FROM messages
+      WHERE id = ?
+        AND room = ?
+    `)
+      .bind(
+        id,
+        room
+      )
+      .run();
+
+    return json({
+      ok:true,
+      id:id
+    });
+
+  }catch(e){
+
+    console.error(
+      'message delete error',
+      e
+    );
+
+    return json(
+      {
+        error:
+          'delete failed'
+      },
+      500
+    );
+  }
+    }
     if(
       url.pathname==='/api/attachments'&&
       request.method==='POST'
