@@ -165,14 +165,10 @@ main{
 }
 .message-actions{
   display:none;
-  gap:5px;
-  position:absolute;
-  right:6px;
-  top:-34px;
-  z-index:20;
-  padding:4px;
-  background:#071007;
-  border:1px solid #397a39;
+  gap:6px;
+  margin-top:6px;
+  padding-top:5px;
+  border-top:1px solid #174117;
 }
 
 .msg.show-actions .message-actions{
@@ -180,21 +176,25 @@ main{
 }
 
 .message-actions button{
-  padding:4px 7px;
+  padding:4px 8px;
   background:#0c2d0c;
   border:1px solid #397a39;
   color:#9fff9f;
   font:inherit;
-  font-size:10px;
+  font-size:11px;
   font-weight:bold;
   cursor:pointer;
+}
+
+.message-actions .edit-message{
+  border-color:#5b8db8;
+  color:#a9d5ff;
 }
 
 .message-actions .delete-message{
   border-color:#a95555;
   color:#ff9f9f;
 }
-
 .edited-label{
   color:#6f9f6f;
   font-size:10px;
