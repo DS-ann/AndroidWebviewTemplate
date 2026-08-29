@@ -867,21 +867,17 @@ function add(m){
     actions.className=
       'message-actions';
 
-    actions.innerHTML=`
-      <button
-        type="button"
-        class="edit-message"
-      >
-        [EDIT]
-      </button>
-
-      <button
-        type="button"
-        class="delete-message"
-      >
-        [DLT]
-      </button>
-    `;
+        actions.innerHTML=
+      '<button '+
+      'type="button" '+
+      'class="edit-message">'+
+      '[EDIT]'+
+      '</button>'+
+      '<button '+
+      'type="button" '+
+      'class="delete-message">'+
+      '[DLT]'+
+      '</button>';
 
     d.appendChild(actions);
 
