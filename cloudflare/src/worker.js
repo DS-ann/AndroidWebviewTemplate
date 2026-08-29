@@ -1,4 +1,3 @@
-
 const CORS={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"Content-Type","Access-Control-Allow-Methods":"GET,POST,OPTIONS"};
 const MAX_ATTACHMENT_BYTES=1400000;
 const HTML=`
