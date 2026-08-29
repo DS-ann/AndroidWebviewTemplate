@@ -914,214 +914,93 @@ function add(m){
       }
     );
 
-
-    let pressTimer=null;
-    let pressMoved=false;
-
-
-    d.addEventListener(
-      'touchstart',
-      e=>{
-        if(
-          e.touches.length!==1
-        ){
-          return;
-        }
-
-        pressMoved=false;
-
-        clearTimeout(
-          pressTimer
-        );
-
-        pressTimer=
-          setTimeout(
-            ()=>{
-              if(!pressMoved){
-                d.classList.toggle(
-                  'show-actions'
-                );
-              }
-            },
-            600
-          );
-      },
-      {
-        passive:true
-      }
-    );
-
-
-    d.addEventListener(
-      'touchmove',
-      e=>{
-        if(
-          e.touches.length!==1
-        ){
-          return;
-        }
-
-        pressMoved=true;
-
-        clearTimeout(
-          pressTimer
-        );
-      },
-      {
-        passive:true
-      }
-    );
-
-
-    d.addEventListener(
-      'touchend',
-      ()=>{
-        clearTimeout(
-          pressTimer
-        );
-      },
-      {
-        passive:true
-      }
-    );
-
-
-    d.addEventListener(
-      'touchcancel',
-      ()=>{
-        clearTimeout(
-          pressTimer
-        );
-      },
-      {
-        passive:true
-      }
-    );
-  }
-
-
   let startX=0;
   let startY=0;
+  let pressTimer=null;
   let swiping=false;
+  let moved=false;
 
+  d.addEventListener('touchstart',e=>{
+    if(e.touches.length!==1)return;
 
-  d.addEventListener(
-    'touchstart',
-    e=>{
-      if(
-        e.touches.length!==1
-      ){
-        return;
+    startX=e.touches[0].clientX;
+    startY=e.touches[0].clientY;
+
+    swiping=false;
+    moved=false;
+
+    clearTimeout(pressTimer);
+
+    pressTimer=setTimeout(()=>{
+      if(!moved&&!swiping){
+        d.classList.toggle('show-actions');
       }
+    },600);
+  },{passive:true});
 
-      startX=
-        e.touches[0].clientX;
+  d.addEventListener('touchmove',e=>{
+    if(e.touches.length!==1)return;
 
-      startY=
-        e.touches[0].clientY;
+    const dx=e.touches[0].clientX-startX;
+    const dy=e.touches[0].clientY-startY;
 
-      swiping=false;
+    if(Math.abs(dy)>Math.abs(dx)){
+      moved=true;
+      clearTimeout(pressTimer);
+      return;
+    }
 
-      d.classList.remove(
-        'reply-ready'
+    if(dx>5){
+      moved=true;
+      swiping=true;
+
+      clearTimeout(pressTimer);
+
+      const amount=Math.min(dx,80);
+
+      d.style.transform=
+        'translateX('+amount+'px)';
+
+      d.classList.toggle(
+        'reply-ready',
+        dx>=55
       );
-    },
-    {
-      passive:true
     }
-  );
+  },{passive:true});
 
+  d.addEventListener('touchend',()=>{
+    clearTimeout(pressTimer);
 
-  d.addEventListener(
-    'touchmove',
-    e=>{
-      if(
-        e.touches.length!==1
-      ){
-        return;
-      }
-
-      const dx=
-        e.touches[0].clientX-
-        startX;
-
-      const dy=
-        e.touches[0].clientY-
-        startY;
-
-
-      if(
-        Math.abs(dy)>
-        Math.abs(dx)
-      ){
-        return;
-      }
-
-
-      if(dx>5){
-
-        swiping=true;
-
-        const amount=
-          Math.min(
-            dx,
-            80
-          );
-
-        d.style.transform=
-          'translateX('+
-          amount+
-          'px)';
-
-        d.classList.toggle(
-          'reply-ready',
-          dx>=55
-        );
-      }
-    },
-    {
-      passive:true
+    if(
+      swiping &&
+      d.classList.contains('reply-ready')
+    ){
+      showReplyBar(m);
     }
-  );
 
+    d.style.transform='';
 
-  d.addEventListener(
-    'touchend',
-    ()=>{
-      if(
-        swiping &&
-        d.classList.contains(
-          'reply-ready'
-        )
-      ){
-        showReplyBar(m);
-      }
+    d.classList.remove(
+      'reply-ready'
+    );
 
-      d.style.transform='';
+    swiping=false;
+    moved=false;
+  });
 
-      d.classList.remove(
-        'reply-ready'
-      );
+  d.addEventListener('touchcancel',()=>{
+    clearTimeout(pressTimer);
 
-      swiping=false;
-    }
-  );
-  d.addEventListener(
-    'touchcancel',
-    ()=>{
+    d.style.transform='';
 
-      d.style.transform='';
+    d.classList.remove(
+      'reply-ready'
+    );
 
-      d.classList.remove(
-        'reply-ready'
-      );
-
-      swiping=false;
-
-    }
-  );
-
-
+    swiping=false;
+    moved=false;
+  });
+  
   /*
    * Click reply preview
    * to jump to original message.
