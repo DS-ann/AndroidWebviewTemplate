@@ -1397,6 +1397,7 @@ function sendSignal(x){
   ){
     ws.send(JSON.stringify(x))
   }
+}
 
 function updateCallButton(state){
   const b=callKind==='video'?$('video'):$('voice');
@@ -1423,7 +1424,9 @@ function showIncoming(x){
   $('incoming').style.display='block';
   setStatus('INCOMING CALL');
 }
-}function hideIncoming(){incomingOffer=null;incomingCaller='';$('incoming').style.display='none'}
+
+function hideIncoming(){incomingOffer=null;incomingCaller='';$('incoming').style.display='none'}
+
 function startTimeout(){clearTimeout(callTimeout);callTimeout=setTimeout(()=>{if(pc&&pc.connectionState!=='connected'){setStatus('CALL TIMEOUT');updateCallButton('failed');hangup(false)}},30000)}function clearCallTimeout(){if(callTimeout){clearTimeout(callTimeout);callTimeout=null}}
 function showVideoMode(){if(callKind==='video'){$('chat').classList.add('video-mode');$('callinfo').textContent='[ VIDEO CALL ]'}}function hideVideoMode(){$('chat').classList.remove('video-mode');$('remote').srcObject=null;$('local').srcObject=null}
 function makePeer(video){
