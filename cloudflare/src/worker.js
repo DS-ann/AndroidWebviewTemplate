@@ -1553,8 +1553,7 @@ async function startCall(video){
 
       }catch(e){
 
-    console.error('getUserMedia:', e);
-alert('MEDIA ERROR: ' + e.name + '\n' + e.message);
+    console.error(e);
 
     hangup(false);
 
