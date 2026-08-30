@@ -196,6 +196,9 @@ async function editMessage(m){
   if(!m || m.sender!==name) return;
   const current=m.text||'';
   const next=prompt('Edit message:', current);
+  // Hide the action menu immediately, whether they cancel or not
+  const msg=document.querySelector('.msg[data-message-id="'+CSS.escape(String(m.id))+'"]');
+  if(msg) msg.classList.remove('show-actions');
   if(next===null || !next.trim() || next===current) return;
   try{
     const res=await fetch('/api/messages/edit', {
@@ -205,7 +208,6 @@ async function editMessage(m){
     });
     const data=await res.json();
     if(!res.ok) throw new Error(data.error||'Edit failed');
-    const msg=document.querySelector('.msg[data-message-id="'+CSS.escape(String(m.id))+'"]');
     if(msg){
       const textEl=msg.querySelector('.msg-text');
       if(textEl) textEl.textContent=next.trim();
@@ -221,12 +223,19 @@ async function editMessage(m){
   }catch(e){
     console.error('edit message error', e);
     alert(e.message||'Could not edit message.');
+    // Ensure actions are hidden even if error
+    if(msg) msg.classList.remove('show-actions');
   }
 }
 
 async function deleteMessage(m){
   if(!m || m.sender!==name) return;
-  if(!confirm('Delete this message?')) return;
+  const msg=document.querySelector('.msg[data-message-id="'+CSS.escape(String(m.id))+'"]');
+  if(!confirm('Delete this message?')){
+    // User cancelled – hide actions
+    if(msg) msg.classList.remove('show-actions');
+    return;
+  }
   try{
     const res=await fetch('/api/messages/delete', {
       method:'POST',
@@ -235,11 +244,12 @@ async function deleteMessage(m){
     });
     const data=await res.json();
     if(!res.ok) throw new Error(data.error||'Delete failed');
-    const msg=document.querySelector('.msg[data-message-id="'+CSS.escape(String(m.id))+'"]');
-    if(msg) msg.remove();
+    if(msg) msg.remove(); // element removed, so actions disappear
   }catch(e){
     console.error('delete message error', e);
     alert(e.message||'Could not delete message.');
+    // Hide actions if deletion failed
+    if(msg) msg.classList.remove('show-actions');
   }
 }
 </script>
