@@ -191,10 +191,6 @@ async function signal(x){try{if(x.type==='offer'){if(pc||localStream){sendSignal
 function hangup(send=true){clearCallTimeout();if(send)sendSignal({type:'hangup'});if(pc){pc.onicecandidate=null;pc.ontrack=null;pc.onconnectionstatechange=null;pc.oniceconnectionstatechange=null;try{pc.close();}catch(e){console.warn('PeerConnection close failed',e);}pc=null;}if(localStream){localStream.getTracks().forEach(track=>{try{track.stop();}catch(e){console.warn('Track stop failed',e);}});localStream=null;}pendingCandidates=[];hideIncoming();callKind='';hideVideoMode();const remote=$('remote');if(remote)remote.srcObject=null;const local=$('local');if(local)local.srcObject=null;$('chat').classList.remove('video-mode');$('voice').textContent='[start a...]';$('video').textContent='[start v...]';if(ws&&ws.readyState===WebSocket.OPEN)setStatus('ONLINE');}
 $('join').onclick=async()=>{name=$('name').value.trim();room=$('room').value.trim();if(!name||!room){alert('username and room_code required');return;}sessionStorage.setItem('twochatName',name);sessionStorage.setItem('twochatRoom',room);$('setup').classList.add('hidden');$('chat').style.display='flex';setStatus('CONNECTING...');await history();const proto=location.protocol==='https:'?'wss':'ws';ws=new WebSocket(proto+'://'+location.host+'/ws?room='+encodeURIComponent(room)+'&name='+encodeURIComponent(name));ws.onopen=()=>{setStatus('ONLINE');};ws.onclose=()=>{setStatus('DISCONNECTED');};ws.onerror=()=>{setStatus('CONNECTION ERROR');};ws.onmessage=e=>{try{const x=JSON.parse(e.data);if(x.type==='message'||x.type==='attachment'){add(x);}
 else if (x.type === 'peer') {
-      // ------- FIXED: show last seen ----------
-      if (x.online) {
-        setStatus('PEER ONLINE');
-      } else if (x.type === 'peer') {
   if (x.online) {
     setStatus('PEER ONLINE');
   } else if (x.lastSeen) {
@@ -437,12 +433,12 @@ function clean(v){ return String(v||'').trim().slice(0,128); }
 function json(data,status){ return new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json',...CORS}}); }
 // ===== END PART 3 =====
 
-        // ===== PART 4 (FINAL – correct initial & disconnection status) =====
+// ===== PART 4 (FIXED – correct online status on join) =====
 export class Room {
   constructor(state) {
     this.state = state;
     this.clients = new Map();   // WebSocket -> name
-    this.lastSeen = new Map();  // name -> timestamp (kept after disconnect)
+    this.lastSeen = new Map();  // name -> timestamp (persists)
   }
 
   async fetch(request) {
@@ -462,52 +458,28 @@ export class Room {
       const name = url.searchParams.get('name') || 'Guest';
       server.accept();
 
-      // Store the new client
+      // Add the new client and update last seen
       this.clients.set(server, name);
       this.lastSeen.set(name, Date.now());
 
-      // -------------------------------------------------
-      // 1) Send the current status to the new client itself
-      // -------------------------------------------------
-      const allNames = Array.from(this.lastSeen.keys());
-      const otherName = allNames.find(n => n !== name) || null;
-      const online = otherName ? this.clients.has(otherName) : false;
-      const lastSeen = otherName ? this.lastSeen.get(otherName) : null;
-      try {
-        server.send(JSON.stringify({
-          type: 'peer',
-          online: online,
-          lastSeen: lastSeen
-        }));
-      } catch (e) {}
+      // Send the current status to ALL connected clients (including the new one)
+      this.sendStatusToAll();
 
-      // --------------------------------------------
-      // 2) Broadcast updated status to all other clients
-      //    (they will see this new client as online)
-      // --------------------------------------------
-      this.broadcastPeerStatus(server);  // except = the new client
-
-      // --------------------------------------------
-      // 3) Handle incoming messages
-      // --------------------------------------------
       server.addEventListener('message', event => {
         try {
           const x = JSON.parse(event.data);
-          this.lastSeen.set(name, Date.now());   // update activity
+          this.lastSeen.set(name, Date.now());
           if (['offer', 'answer', 'candidate', 'hangup', 'reject', 'busy'].includes(x.type)) {
             this.broadcast({ ...x, from: name }, server);
           }
         } catch (e) {}
       });
 
-      // --------------------------------------------
-      // 4) Handle disconnect
-      // --------------------------------------------
       server.addEventListener('close', () => {
         this.clients.delete(server);
-        this.lastSeen.set(name, Date.now());    // remember when they left
-        // Notify remaining clients about the departure
-        this.broadcastPeerStatus();             // no except – sends to all remaining
+        this.lastSeen.set(name, Date.now());
+        // Notify remaining clients
+        this.sendStatusToAll();
       });
 
       return new Response(null, { status: 101, webSocket: client });
@@ -516,16 +488,15 @@ export class Room {
     return new Response('not found', { status: 404 });
   }
 
-  // Broadcast the current peer status to all connected clients (except optionally one)
-  broadcastPeerStatus(except = null) {
+  // Send the current online/lastSeen status to every connected client
+  sendStatusToAll() {
     const allNames = Array.from(this.lastSeen.keys());
 
     for (const [ws, name] of this.clients) {
-      if (ws === except) continue;
-
+      // Find the other user (we assume at most 2 users)
       const otherName = allNames.find(n => n !== name) || null;
-      const lastSeen = otherName ? this.lastSeen.get(otherName) : null;
       const online = otherName ? this.clients.has(otherName) : false;
+      const lastSeen = otherName ? this.lastSeen.get(otherName) : null;
 
       try {
         ws.send(JSON.stringify({
