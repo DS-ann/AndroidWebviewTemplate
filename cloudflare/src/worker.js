@@ -199,9 +199,8 @@ async function deleteMessage(m){if(!m||m.sender!==name)return;if(!confirm('Delet
 </html>
 `;
 // ===== END PART 1b =====
-
-// ===== PART 2 (UPDATED) =====
-// Add this new helper function right after ensureMessageEditColumn
+// ===== PART 2 (FIXED) =====
+// Add this helper at the top
 async function ensureMessagesTable(env){
   await env.DB.prepare(`
     CREATE TABLE IF NOT EXISTS messages (
@@ -245,7 +244,7 @@ export default{
     if(url.pathname==='/api/messages' && request.method==='GET'){
       const room=clean(url.searchParams.get('room'));
       if(!room) return json({error:'room required'},400);
-      await ensureMessagesTable(env);          // <-- CREATES messages TABLE
+      await ensureMessagesTable(env);
       await ensureAttachmentTable(env);
       await ensureMessageReplyColumn(env);
       await ensureMessageEditColumn(env);
@@ -258,7 +257,7 @@ export default{
     }
     if(url.pathname==='/api/messages' && request.method==='POST'){
       let b; try{ b=await request.json(); }catch{ return json({error:'invalid JSON'},400); }
-      await ensureMessagesTable(env);          // <-- CREATES messages TABLE
+      await ensureMessagesTable(env);
       await ensureMessageReplyColumn(env);
       await ensureMessageEditColumn(env);
       const room=clean(b.room), sender=clean(b.name), text=String(b.text||'').slice(0,2000), replyTo=Number.isInteger(b.replyTo)?b.replyTo:null;
@@ -272,16 +271,52 @@ export default{
       await env.ROOMS.get(id).fetch('https://room/broadcast',{method:'POST',body:JSON.stringify(message)});
       return json(message,201);
     }
+    // ========== FIXED EDIT ==========
     if(url.pathname==='/api/messages/edit' && request.method==='POST'){
-      await ensureMessagesTable(env);          // <-- CREATES messages TABLE
-      try{ const b=await request.json(); const id=Number(b.id); const room=clean(b.room); const sender=clean(b.name); const text=String(b.text||'').trim().slice(0,2000); if(!Number.isInteger(id)||!room||!sender||!text) return json({error:'id, room, name and text required'},400); const message=await env.DB.prepare(`SELECT id,sender,room,type FROM messages WHERE id=? AND room=? LIMIT 1`).bind(id,room).first(); if(!message) return json({error:'message not found'},404); if(message.sender!==sender) return json({error:'not allowed'},403); if(message.type==='attachment') return json({error:'attachments cannot be edited'},400); const editedAt=Date.now(); await env.DB.prepare(`UPDATE messages SET text=?, edited_at=? WHERE id=? AND room=?`).bind(text,editedAt,id,room).run(); return json({ok:true,id,room,sender,text,edited_at:editedAt}); }catch(e){ console.error('message edit error',e); return json({error:'edit failed'},500); }
+      await ensureMessagesTable(env);
+      try{
+        const b=await request.json();
+        const id=Number(b.id);
+        const room=clean(b.room);
+        const sender=clean(b.name);
+        const text=String(b.text||'').trim().slice(0,2000);
+        if(!Number.isInteger(id)||!room||!sender||!text)
+          return json({error:'id, room, name and text required'},400);
+        // Get message – no 'type' column
+        const message=await env.DB.prepare(`SELECT id,sender,room FROM messages WHERE id=? AND room=? LIMIT 1`).bind(id,room).first();
+        if(!message) return json({error:'message not found'},404);
+        if(message.sender!==sender) return json({error:'not allowed'},403);
+        // Attachments are in a separate table, so we don't need to check type
+        const editedAt=Date.now();
+        await env.DB.prepare(`UPDATE messages SET text=?, edited_at=? WHERE id=? AND room=?`).bind(text,editedAt,id,room).run();
+        return json({ok:true, id, room, sender, text, edited_at:editedAt});
+      }catch(e){
+        console.error('message edit error',e);
+        return json({error:'edit failed'},500);
+      }
     }
+    // ========== FIXED DELETE ==========
     if(url.pathname==='/api/messages/delete' && request.method==='POST'){
-      await ensureMessagesTable(env);          // <-- CREATES messages TABLE
-      try{ const b=await request.json(); const id=Number(b.id); const room=clean(b.room); const sender=clean(b.name); if(!Number.isInteger(id)||!room||!sender) return json({error:'id, room and name required'},400); const message=await env.DB.prepare(`SELECT id,sender,room,type FROM messages WHERE id=? AND room=? LIMIT 1`).bind(id,room).first(); if(!message) return json({error:'message not found'},404); if(message.sender!==sender) return json({error:'not allowed'},403); await env.DB.prepare(`DELETE FROM messages WHERE id=? AND room=?`).bind(id,room).run(); return json({ok:true,id}); }catch(e){ console.error('message delete error',e); return json({error:'delete failed'},500); }
+      await ensureMessagesTable(env);
+      try{
+        const b=await request.json();
+        const id=Number(b.id);
+        const room=clean(b.room);
+        const sender=clean(b.name);
+        if(!Number.isInteger(id)||!room||!sender)
+          return json({error:'id, room and name required'},400);
+        const message=await env.DB.prepare(`SELECT id,sender,room FROM messages WHERE id=? AND room=? LIMIT 1`).bind(id,room).first();
+        if(!message) return json({error:'message not found'},404);
+        if(message.sender!==sender) return json({error:'not allowed'},403);
+        await env.DB.prepare(`DELETE FROM messages WHERE id=? AND room=?`).bind(id,room).run();
+        return json({ok:true, id});
+      }catch(e){
+        console.error('message delete error',e);
+        return json({error:'delete failed'},500);
+      }
     }
-
-// ===== END PART 2 (UPDATED) =====
+    // ... attachments, scheduled, utilities, Room class (Part 3 & 4 unchanged) ...
+// ===== END PART 2 (FIXED) =====
     // ===== PART 3 =====
     if(url.pathname==='/api/attachments' && request.method==='POST'){
       try{ await ensureAttachmentTable(env); const form=await request.formData(); const room=clean(form.get('room')); const sender=clean(form.get('name')); const file=form.get('file'); if(!room||!sender||!file||typeof file.arrayBuffer!=='function') return json({error:'room, name and file required'},400); if(file.size>MAX_ATTACHMENT_BYTES) return json({error:'attachment too large; maximum is 1.4 MB'},413); const filename=String(file.name||'attachment').slice(0,180); const mime=String(file.type||'application/octet-stream').slice(0,120); const data=await file.arrayBuffer(); const now=Date.now(); const r=await env.DB.prepare(`INSERT INTO attachments(room,sender,filename,mime_type,size,data,created_at) VALUES(?,?,?,?,?,?,?)`).bind(room,sender,filename,mime,file.size,data,now).run(); const message={id:r.meta.last_row_id,room,sender,filename,mime_type:mime,size:file.size,created_at:now,type:'attachment'}; const id=env.ROOMS.idFromName(room); await env.ROOMS.get(id).fetch('https://room/broadcast',{method:'POST',body:JSON.stringify(message)}); return json(message,201); }catch(e){ console.error('attachment upload',e); return json({error:'attachment upload failed'},500); }
