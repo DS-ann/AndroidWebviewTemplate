@@ -189,27 +189,30 @@ async function acceptIncoming(){const x=incomingOffer;hideIncoming();if(!x)retur
 function rejectIncoming(){const x=incomingOffer;hideIncoming();if(x)sendSignal({type:'reject',from:x.from});setStatus('ONLINE');}
 async function signal(x){try{if(x.type==='offer'){if(pc||localStream){sendSignal({type:'busy'});return;}showIncoming(x);}else if(x.type==='answer'&&pc){await pc.setRemoteDescription({type:'answer',sdp:x.sdp});await addPending();}else if(x.type==='candidate'){if(pc&&pc.remoteDescription){try{await pc.addIceCandidate(x.candidate);}catch(e){console.warn('ICE add failed',e);}}else{pendingCandidates.push(x.candidate);}}else if(x.type==='hangup'){hangup(false);setStatus('CALL ENDED');}else if(x.type==='reject'){clearCallTimeout();updateCallButton('failed');hangup(false);setStatus('CALL REJECTED BY '+(x.from||'PEER'));}else if(x.type==='busy'){clearCallTimeout();setStatus('PEER BUSY');updateCallButton('failed');hangup(false);}}catch(e){console.error('signaling error',e);clearCallTimeout();setStatus('CALL FAILED');}}
 function hangup(send=true){clearCallTimeout();if(send)sendSignal({type:'hangup'});if(pc){pc.onicecandidate=null;pc.ontrack=null;pc.onconnectionstatechange=null;pc.oniceconnectionstatechange=null;try{pc.close();}catch(e){console.warn('PeerConnection close failed',e);}pc=null;}if(localStream){localStream.getTracks().forEach(track=>{try{track.stop();}catch(e){console.warn('Track stop failed',e);}});localStream=null;}pendingCandidates=[];hideIncoming();callKind='';hideVideoMode();const remote=$('remote');if(remote)remote.srcObject=null;const local=$('local');if(local)local.srcObject=null;$('chat').classList.remove('video-mode');$('voice').textContent='[start a...]';$('video').textContent='[start v...]';if(ws&&ws.readyState===WebSocket.OPEN)setStatus('ONLINE');}
-$('join').onclick=async()=>{name=$('name').value.trim();room=$('room').value.trim();if(!name||!room){alert('username and room_code required');return;}sessionStorage.setItem('twochatName',name);sessionStorage.setItem('twochatRoom',room);$('setup').classList.add('hidden');$('chat').style.display='flex';setStatus('CONNECTING...');await history();const proto=location.protocol==='https:'?'wss':'ws';ws=new WebSocket(proto+'://'+location.host+'/ws?room='+encodeURIComponent(room)+'&name='+encodeURIComponent(name));ws.onopen=()=>{setStatus('ONLINE');};ws.onclose=()=>{setStatus('DISCONNECTED');};ws.onerror=()=>{setStatus('CONNECTION ERROR');};ws.onmessage=e=>{try{const x=JSON.parse(e.data);if(x.type==='message'||x.type==='attachment'){add(x);}
-else if (x.type === 'peer') {
-  if (x.online) {
-    setStatus('PEER ONLINE');
-  } else if (x.lastSeen) {
-    const diff = Date.now() - x.lastSeen;
-    const seconds = Math.floor(diff / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-    let label = '';
-    if (seconds < 60) label = 'Just now';
-    else if (minutes < 60) label = minutes + 'm ago';
-    else if (hours < 24) label = hours + 'h ago';
-    else label = days + 'd ago';
-    setStatus('Last seen ' + label);
-  } else {
-    setStatus('WAITING...');
-  }
-}
-      // ----------------------------------------
+$('join').onclick=async()=>{name=$('name').value.trim();room=$('room').value.trim();if(!name||!room){alert('username and room_code required');return;}sessionStorage.setItem('twochatName',name);sessionStorage.setItem('twochatRoom',room);$('setup').classList.add('hidden');$('chat').style.display='flex';setStatus('CONNECTING...');await history();const proto=location.protocol==='https:'?'wss':'ws';ws=new WebSocket(proto+'://'+location.host+'/ws?room='+encodeURIComponent(room)+'&name='+encodeURIComponent(name));ws.onopen=()=>{setStatus('ONLINE');};ws.onclose=()=>{setStatus('DISCONNECTED');};ws.onerror=()=>{setStatus('CONNECTION ERROR');};
+ws.onmessage = e => {
+  try {
+    const x = JSON.parse(e.data);
+    if (x.type === 'message' || x.type === 'attachment') {
+      add(x);
+    } else if (x.type === 'peer') {
+      if (x.online) {
+        setStatus('PEER ONLINE');
+      } else if (x.lastSeen) {
+        const diff = Date.now() - x.lastSeen;
+        const seconds = Math.floor(diff / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
+        let label = '';
+        if (seconds < 60) label = 'Just now';
+        else if (minutes < 60) label = minutes + 'm ago';
+        else if (hours < 24) label = hours + 'h ago';
+        else label = days + 'd ago';
+        setStatus('Last seen ' + label);
+      } else {
+        setStatus('WAITING...');
+      }
     } else if (x.type === 'message_edit') {
       const target = document.querySelector('.msg[data-message-id="' + CSS.escape(String(x.id)) + '"]');
       if (target) {
