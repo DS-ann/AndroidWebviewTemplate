@@ -436,12 +436,12 @@ export default{
 function clean(v){ return String(v||'').trim().slice(0,128); }
 function json(data,status){ return new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json',...CORS}}); }
 // ===== END PART 3 =====
-// ===== PART 4 (FINAL with last seen) =====
+// ===== PART 4 (FIXED – last seen persists after disconnect) =====
 export class Room {
   constructor(state) {
     this.state = state;
     this.clients = new Map();   // WebSocket -> name
-    this.lastSeen = new Map();  // name -> timestamp
+    this.lastSeen = new Map();  // name -> timestamp (persists after disconnect)
   }
 
   async fetch(request) {
@@ -461,16 +461,17 @@ export class Room {
       const name = url.searchParams.get('name') || 'Guest';
       server.accept();
 
+      // Store the client and update last seen
       this.clients.set(server, name);
       this.lastSeen.set(name, Date.now());
 
-      // Send the current peer status to the newly connected client
+      // Send current status to the new client
       this.broadcastPeerStatus(server);
 
       server.addEventListener('message', event => {
         try {
           const x = JSON.parse(event.data);
-          // Update last seen on every message (including signaling)
+          // Update last seen on any activity
           this.lastSeen.set(name, Date.now());
           if (['offer', 'answer', 'candidate', 'hangup', 'reject', 'busy'].includes(x.type)) {
             this.broadcast({ ...x, from: name }, server);
@@ -479,9 +480,10 @@ export class Room {
       });
 
       server.addEventListener('close', () => {
+        // Remove from active clients, but keep lastSeen entry
         this.clients.delete(server);
-        this.lastSeen.set(name, Date.now());
-        // Broadcast updated status to all remaining clients
+        this.lastSeen.set(name, Date.now());   // record the time they left
+        // Tell everyone else about the updated status
         this.broadcastPeerStatus();
       });
 
@@ -491,21 +493,24 @@ export class Room {
     return new Response('not found', { status: 404 });
   }
 
-  // Broadcast the current online status and lastSeen of the other user(s)
+  // Broadcast the current status to all connected clients (except optionally one)
   broadcastPeerStatus(except = null) {
-    const allNames = Array.from(this.clients.values());
-    // For each connected client, send info about the other user (if any)
+    // Get all names that have ever connected (from lastSeen)
+    const allNames = Array.from(this.lastSeen.keys());
+
     for (const [ws, name] of this.clients) {
       if (ws === except) continue;
-      const others = allNames.filter(n => n !== name);
-      const otherName = others.length > 0 ? others[0] : null;
+
+      // Find the other user's name (if any) – we only ever have two users
+      const otherName = allNames.find(n => n !== name) || null;
       const lastSeen = otherName ? this.lastSeen.get(otherName) : null;
-      const online = others.length > 0;
+      const online = otherName ? this.clients.has(otherName) : false;
+
       try {
         ws.send(JSON.stringify({
           type: 'peer',
           online: online,
-          lastSeen: lastSeen  // timestamp or null
+          lastSeen: lastSeen   // timestamp or null
         }));
       } catch (e) {}
     }
