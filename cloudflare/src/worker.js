@@ -2211,131 +2211,6 @@ async function deleteMessage(m){
 </body>
 </html>
 `;
-async function editMessage(m){
-
-  const oldText=
-    String(m.text||'');
-
-  const newText=
-    prompt(
-      'Edit message:',
-      oldText
-    );
-
-  if(newText===null){
-    return;
-  }
-
-  const text=
-    newText.trim();
-
-  if(!text){
-    return;
-  }
-
-  if(text===oldText){
-    return;
-  }
-
-  try{
-
-    const r=
-      await fetch(
-        '/api/messages/edit',
-        {
-          method:'POST',
-          headers:{
-            'content-type':
-              'application/json'
-          },
-          body:
-            JSON.stringify({
-              room,
-              name,
-              id:Number(m.id),
-              text
-            })
-        }
-      );
-
-    const result=
-      await r.json();
-
-    if(!r.ok){
-      throw new Error(
-        result.error||
-        'edit failed'
-      );
-    }
-
-  }catch(e){
-
-    console.error(
-      'edit message',
-      e
-    );
-
-    alert(
-      e.message||
-      'message edit failed'
-    );
-
-  }
-}
-async function deleteMessage(m){
-
-  if(
-    !confirm(
-      'Delete this message?'
-    )
-  ){
-    return;
-  }
-
-  try{
-
-    const r=
-      await fetch(
-        '/api/messages/delete',
-        {
-          method:'POST',
-          headers:{
-            'content-type':
-              'application/json'
-          },
-          body:
-            JSON.stringify({
-              room,
-              name,
-              id:Number(m.id)
-            })
-        }
-      );
-
-    const result=
-      await r.json();
-
-    if(!r.ok){
-      throw new Error(
-        result.error||
-        'delete failed'
-      );
-    }
-
-  }catch(e){
-
-    console.error(
-      'delete message',
-      e
-    );
-
-    alert(
-      e.message||
-      'message delete failed'
-    );
-
-  }
-}
 async function ensureAttachmentTable(env){
 
   await env.DB.prepare(`
@@ -2678,8 +2553,7 @@ export default{
         SELECT
           id,
           sender,
-          room,
-          type
+          room
         FROM messages
         WHERE id = ?
           AND room = ?
@@ -2713,19 +2587,6 @@ export default{
       );
     }
 
-    if (
-      message.type ===
-      'attachment'
-    ) {
-      return json(
-        {
-          error:
-            'attachments cannot be edited'
-        },
-        400
-      );
-    }
-
     const editedAt =
       Date.now();
 
@@ -2744,6 +2605,22 @@ export default{
         room
       )
       .run();
+
+    const doId =
+      env.ROOMS.idFromName(room);
+
+    await env.ROOMS.get(doId).fetch(
+      'https://room/broadcast',
+      {
+        method:'POST',
+        body:JSON.stringify({
+          type:'message_edit',
+          id:id,
+          text:text,
+          edited_at:editedAt
+        })
+      }
+    );
 
     return json({
       ok:true,
@@ -2806,8 +2683,7 @@ export default{
         SELECT
           id,
           sender,
-          room,
-          type
+          room
         FROM messages
         WHERE id = ?
           AND room = ?
@@ -2851,6 +2727,20 @@ export default{
         room
       )
       .run();
+
+    const doId =
+      env.ROOMS.idFromName(room);
+
+    await env.ROOMS.get(doId).fetch(
+      'https://room/broadcast',
+      {
+        method:'POST',
+        body:JSON.stringify({
+          type:'message_delete',
+          id:id
+        })
+      }
+    );
 
     return json({
       ok:true,
@@ -3278,4 +3168,4 @@ export class Room{
       }catch{}
     }
   }
-          }
+}
