@@ -192,8 +192,56 @@ function hangup(send=true){clearCallTimeout();if(send)sendSignal({type:'hangup'}
 $('join').onclick=async()=>{name=$('name').value.trim();room=$('room').value.trim();if(!name||!room){alert('username and room_code required');return;}sessionStorage.setItem('twochatName',name);sessionStorage.setItem('twochatRoom',room);$('setup').classList.add('hidden');$('chat').style.display='flex';setStatus('CONNECTING...');await history();const proto=location.protocol==='https:'?'wss':'ws';ws=new WebSocket(proto+'://'+location.host+'/ws?room='+encodeURIComponent(room)+'&name='+encodeURIComponent(name));ws.onopen=()=>{setStatus('ONLINE');};ws.onclose=()=>{setStatus('DISCONNECTED');};ws.onerror=()=>{setStatus('CONNECTION ERROR');};ws.onmessage=e=>{try{const x=JSON.parse(e.data);if(x.type==='message'||x.type==='attachment'){add(x);}else if(x.type==='peer'){setStatus(x.online?'PEER ONLINE':'WAITING...');}else if(x.type==='message_edit'){const target=document.querySelector('.msg[data-message-id="'+CSS.escape(String(x.id))+'"]');if(target){const textEl=target.querySelector('.msg-text');if(textEl){textEl.textContent=x.text||'';const edited=document.createElement('span');edited.className='edited-label';edited.textContent=' (edited)';textEl.appendChild(edited);}}}else if(x.type==='message_delete'){const target=document.querySelector('.msg[data-message-id="'+CSS.escape(String(x.id))+'"]');if(target)target.remove();}else if(['offer','answer','candidate','hangup','reject','busy'].includes(x.type)){signal(x);}}catch(err){console.error('WS message error',err);}};};
 $('send').onclick=send;$('attach').onclick=()=>{$('file').click();};$('file').onchange=uploadFile;$('voice').onclick=()=>{startCall(false);};$('video').onclick=()=>{startCall(true);};$('leave').onclick=()=>{hangup();};$('leave2').onclick=()=>{hangup();};$('accept').onclick=acceptIncoming;$('reject').onclick=rejectIncoming;
 const sn=sessionStorage.getItem('twochatName');const sr=sessionStorage.getItem('twochatRoom');if(sn)$('name').value=sn;if(sr)$('room').value=sr;
-async function editMessage(m){if(!m||m.sender!==name)return;const current=m.text||'';const next=prompt('Edit message:',current);if(next===null||!next.trim()||next===current)return;try{const res=await fetch('/api/messages/edit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:m.id,room,name,text:next.trim()})});const data=await res.json();if(!res.ok)throw new Error(data.error||'Edit failed');const msg=document.querySelector('.msg[data-message-id="'+CSS.escape(String(m.id))+'"]');if(msg){const text=msg.querySelector('.msg-text');if(text)text.textContent=next.trim();}}catch(e){console.error('edit message error',e);alert(e.message||'Could not edit message.');}}
-async function deleteMessage(m){if(!m||m.sender!==name)return;if(!confirm('Delete this message?'))return;try{const res=await fetch('/api/messages/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:m.id,room,name})});const data=await res.json();if(!res.ok)throw new Error(data.error||'Delete failed');const msg=document.querySelector('.msg[data-message-id="'+CSS.escape(String(m.id))+'"]');if(msg)msg.remove();}catch(e){console.error('delete message error',e);alert(e.message||'Could not delete message.');}}
+async function editMessage(m){
+  if(!m || m.sender!==name) return;
+  const current=m.text||'';
+  const next=prompt('Edit message:', current);
+  if(next===null || !next.trim() || next===current) return;
+  try{
+    const res=await fetch('/api/messages/edit', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({id:m.id, room, name, text:next.trim()})
+    });
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||'Edit failed');
+    const msg=document.querySelector('.msg[data-message-id="'+CSS.escape(String(m.id))+'"]');
+    if(msg){
+      const textEl=msg.querySelector('.msg-text');
+      if(textEl) textEl.textContent=next.trim();
+      let editedLabel=msg.querySelector('.edited-label');
+      if(!editedLabel){
+        editedLabel=document.createElement('span');
+        editedLabel.className='edited-label';
+        editedLabel.textContent=' (edited)';
+        textEl?.appendChild(editedLabel);
+      }
+      msg.classList.remove('show-actions');
+    }
+  }catch(e){
+    console.error('edit message error', e);
+    alert(e.message||'Could not edit message.');
+  }
+}
+
+async function deleteMessage(m){
+  if(!m || m.sender!==name) return;
+  if(!confirm('Delete this message?')) return;
+  try{
+    const res=await fetch('/api/messages/delete', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({id:m.id, room, name})
+    });
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||'Delete failed');
+    const msg=document.querySelector('.msg[data-message-id="'+CSS.escape(String(m.id))+'"]');
+    if(msg) msg.remove();
+  }catch(e){
+    console.error('delete message error', e);
+    alert(e.message||'Could not delete message.');
+  }
+}
 </script>
 </body>
 </html>
