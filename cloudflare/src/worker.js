@@ -194,21 +194,25 @@ else if (x.type === 'peer') {
       // ------- FIXED: show last seen ----------
       if (x.online) {
         setStatus('PEER ONLINE');
-      } else if (x.lastSeen) {
-        const diff = Date.now() - x.lastSeen;
-        const seconds = Math.floor(diff / 1000);
-        const minutes = Math.floor(seconds / 60);
-        const hours = Math.floor(minutes / 60);
-        const days = Math.floor(hours / 24);
-        let label = '';
-        if (seconds < 60) label = 'Just now';
-        else if (minutes < 60) label = minutes + 'm ago';
-        else if (hours < 24) label = hours + 'h ago';
-        else label = days + 'd ago';
-        setStatus('Last seen ' + label);
-      } else {
-        setStatus('WAITING...');
-      }
+      } else if (x.type === 'peer') {
+  if (x.online) {
+    setStatus('PEER ONLINE');
+  } else if (x.lastSeen) {
+    const diff = Date.now() - x.lastSeen;
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    let label = '';
+    if (seconds < 60) label = 'Just now';
+    else if (minutes < 60) label = minutes + 'm ago';
+    else if (hours < 24) label = hours + 'h ago';
+    else label = days + 'd ago';
+    setStatus('Last seen ' + label);
+  } else {
+    setStatus('WAITING...');
+  }
+}
       // ----------------------------------------
     } else if (x.type === 'message_edit') {
       const target = document.querySelector('.msg[data-message-id="' + CSS.escape(String(x.id)) + '"]');
@@ -432,54 +436,53 @@ export default{
 function clean(v){ return String(v||'').trim().slice(0,128); }
 function json(data,status){ return new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json',...CORS}}); }
 // ===== END PART 3 =====
-// ===== PART 4 (UPDATED with last seen) =====
-export class Room{
-  constructor(state){
+// ===== PART 4 (FINAL with last seen) =====
+export class Room {
+  constructor(state) {
     this.state = state;
-    this.clients = new Map();        // WebSocket -> name
-    this.lastSeen = new Map();       // name -> timestamp
+    this.clients = new Map();   // WebSocket -> name
+    this.lastSeen = new Map();  // name -> timestamp
   }
 
-  async fetch(request){
+  async fetch(request) {
     const url = new URL(request.url);
 
-    if(url.pathname === '/broadcast' && request.method === 'POST'){
+    if (url.pathname === '/broadcast' && request.method === 'POST') {
       const msg = await request.json();
-      for(const ws of this.clients.keys()){
-        try{ ws.send(JSON.stringify(msg)); } catch(e){}
+      for (const ws of this.clients.keys()) {
+        try { ws.send(JSON.stringify(msg)); } catch (e) {}
       }
       return new Response('ok');
     }
 
-    if(url.pathname === '/ws'){
+    if (url.pathname === '/ws') {
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
       const name = url.searchParams.get('name') || 'Guest';
       server.accept();
 
-      // Save client and update last seen
       this.clients.set(server, name);
       this.lastSeen.set(name, Date.now());
 
-      // Send initial peer status (including own last seen? we'll send other's)
+      // Send the current peer status to the newly connected client
       this.broadcastPeerStatus(server);
 
       server.addEventListener('message', event => {
-        try{
+        try {
           const x = JSON.parse(event.data);
-          // Update last seen on any message
+          // Update last seen on every message (including signaling)
           this.lastSeen.set(name, Date.now());
-          // Forward signaling messages
-          if(['offer','answer','candidate','hangup','reject','busy'].includes(x.type)){
-            this.broadcast({...x, from: name}, server);
+          if (['offer', 'answer', 'candidate', 'hangup', 'reject', 'busy'].includes(x.type)) {
+            this.broadcast({ ...x, from: name }, server);
           }
-        } catch(e){}
+        } catch (e) {}
       });
 
       server.addEventListener('close', () => {
         this.clients.delete(server);
-        this.lastSeen.set(name, Date.now());   // record last seen time
-        this.broadcastPeerStatus();            // tell everyone
+        this.lastSeen.set(name, Date.now());
+        // Broadcast updated status to all remaining clients
+        this.broadcastPeerStatus();
       });
 
       return new Response(null, { status: 101, webSocket: client });
@@ -488,32 +491,30 @@ export class Room{
     return new Response('not found', { status: 404 });
   }
 
-  // Helper to broadcast the current peer status (online + last seen of others)
-  broadcastPeerStatus(except = null){
-    // For each client, send the list of other users' last seen
-    // Since we only have two users, we can just send the other's last seen.
-    const all = Array.from(this.clients.values());
-    for(const [ws, name] of this.clients){
-      if(ws === except) continue;
-      // Find the other user (if any)
-      const others = all.filter(n => n !== name);
+  // Broadcast the current online status and lastSeen of the other user(s)
+  broadcastPeerStatus(except = null) {
+    const allNames = Array.from(this.clients.values());
+    // For each connected client, send info about the other user (if any)
+    for (const [ws, name] of this.clients) {
+      if (ws === except) continue;
+      const others = allNames.filter(n => n !== name);
       const otherName = others.length > 0 ? others[0] : null;
       const lastSeen = otherName ? this.lastSeen.get(otherName) : null;
-      const online = this.clients.size > 1;
-      try{
+      const online = others.length > 0;
+      try {
         ws.send(JSON.stringify({
           type: 'peer',
           online: online,
           lastSeen: lastSeen  // timestamp or null
         }));
-      } catch(e){}
+      } catch (e) {}
     }
   }
 
-  broadcast(obj, except){
-    for(const ws of this.clients.keys()){
-      if(ws === except) continue;
-      try{ ws.send(JSON.stringify(obj)); } catch(e){}
+  broadcast(obj, except) {
+    for (const ws of this.clients.keys()) {
+      if (ws === except) continue;
+      try { ws.send(JSON.stringify(obj)); } catch (e) {}
     }
   }
 }
