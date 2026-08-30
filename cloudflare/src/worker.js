@@ -1833,7 +1833,8 @@ function hangup(send=true){
   if(ws&&ws.readyState===WebSocket.OPEN){
     setStatus('ONLINE');
   }
-}$('join').onclick=async()=>{
+}
+$('join').onclick=async()=>{
   name=$('name').value.trim();
   room=$('room').value.trim();
 
@@ -2553,7 +2554,8 @@ export default{
         SELECT
           id,
           sender,
-          room
+          room,
+          type
         FROM messages
         WHERE id = ?
           AND room = ?
@@ -2587,6 +2589,19 @@ export default{
       );
     }
 
+    if (
+      message.type ===
+      'attachment'
+    ) {
+      return json(
+        {
+          error:
+            'attachments cannot be edited'
+        },
+        400
+      );
+    }
+
     const editedAt =
       Date.now();
 
@@ -2605,22 +2620,6 @@ export default{
         room
       )
       .run();
-
-    const doId =
-      env.ROOMS.idFromName(room);
-
-    await env.ROOMS.get(doId).fetch(
-      'https://room/broadcast',
-      {
-        method:'POST',
-        body:JSON.stringify({
-          type:'message_edit',
-          id:id,
-          text:text,
-          edited_at:editedAt
-        })
-      }
-    );
 
     return json({
       ok:true,
@@ -2683,7 +2682,8 @@ export default{
         SELECT
           id,
           sender,
-          room
+          room,
+          type
         FROM messages
         WHERE id = ?
           AND room = ?
@@ -2727,20 +2727,6 @@ export default{
         room
       )
       .run();
-
-    const doId =
-      env.ROOMS.idFromName(room);
-
-    await env.ROOMS.get(doId).fetch(
-      'https://room/broadcast',
-      {
-        method:'POST',
-        body:JSON.stringify({
-          type:'message_delete',
-          id:id
-        })
-      }
-    );
 
     return json({
       ok:true,
