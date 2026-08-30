@@ -32,7 +32,7 @@ main{width:min(900px,100%);height:100%;display:flex;flex-direction:column;backgr
 .chat{display:none;flex:1;min-height:0;flex-direction:column;}
 .messages{flex:1;overflow:auto;padding:16px;}
 .messages:before{content:"--- secure room session ---";display:block;color:#397039;margin-bottom:12px;}
-.msg{display:table;margin:7px 0;max-width:75%;width:auto;overflow-wrap:anywhere;line-height:1.45;position:relative;padding:7px 8px 20px;white-space:pre-wrap;border:1px solid #397a39;border-radius:8px;background:transparent;}
+.msg{display:table;margin:7px 0;max-width:75%;width:auto;overflow-wrap:anywhere;line-height:1.45;position:relative;padding:7px 8px 20px;white-space:pre-wrap;border:1px solid #397a39;border-radius:8px;background:transparent;user-select:none;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;}
 .msg-time{position:absolute;right:7px;bottom:4px;font-size:10px;color:#5d8b5d;white-space:nowrap}
 .attachment .msg-time{color:#6f9f6f}
 .msg:before{content:"> ";color:#397039}
