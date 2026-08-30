@@ -189,7 +189,49 @@ async function acceptIncoming(){const x=incomingOffer;hideIncoming();if(!x)retur
 function rejectIncoming(){const x=incomingOffer;hideIncoming();if(x)sendSignal({type:'reject',from:x.from});setStatus('ONLINE');}
 async function signal(x){try{if(x.type==='offer'){if(pc||localStream){sendSignal({type:'busy'});return;}showIncoming(x);}else if(x.type==='answer'&&pc){await pc.setRemoteDescription({type:'answer',sdp:x.sdp});await addPending();}else if(x.type==='candidate'){if(pc&&pc.remoteDescription){try{await pc.addIceCandidate(x.candidate);}catch(e){console.warn('ICE add failed',e);}}else{pendingCandidates.push(x.candidate);}}else if(x.type==='hangup'){hangup(false);setStatus('CALL ENDED');}else if(x.type==='reject'){clearCallTimeout();updateCallButton('failed');hangup(false);setStatus('CALL REJECTED BY '+(x.from||'PEER'));}else if(x.type==='busy'){clearCallTimeout();setStatus('PEER BUSY');updateCallButton('failed');hangup(false);}}catch(e){console.error('signaling error',e);clearCallTimeout();setStatus('CALL FAILED');}}
 function hangup(send=true){clearCallTimeout();if(send)sendSignal({type:'hangup'});if(pc){pc.onicecandidate=null;pc.ontrack=null;pc.onconnectionstatechange=null;pc.oniceconnectionstatechange=null;try{pc.close();}catch(e){console.warn('PeerConnection close failed',e);}pc=null;}if(localStream){localStream.getTracks().forEach(track=>{try{track.stop();}catch(e){console.warn('Track stop failed',e);}});localStream=null;}pendingCandidates=[];hideIncoming();callKind='';hideVideoMode();const remote=$('remote');if(remote)remote.srcObject=null;const local=$('local');if(local)local.srcObject=null;$('chat').classList.remove('video-mode');$('voice').textContent='[start a...]';$('video').textContent='[start v...]';if(ws&&ws.readyState===WebSocket.OPEN)setStatus('ONLINE');}
-$('join').onclick=async()=>{name=$('name').value.trim();room=$('room').value.trim();if(!name||!room){alert('username and room_code required');return;}sessionStorage.setItem('twochatName',name);sessionStorage.setItem('twochatRoom',room);$('setup').classList.add('hidden');$('chat').style.display='flex';setStatus('CONNECTING...');await history();const proto=location.protocol==='https:'?'wss':'ws';ws=new WebSocket(proto+'://'+location.host+'/ws?room='+encodeURIComponent(room)+'&name='+encodeURIComponent(name));ws.onopen=()=>{setStatus('ONLINE');};ws.onclose=()=>{setStatus('DISCONNECTED');};ws.onerror=()=>{setStatus('CONNECTION ERROR');};ws.onmessage=e=>{try{const x=JSON.parse(e.data);if(x.type==='message'||x.type==='attachment'){add(x);}else if(x.type==='peer'){setStatus(x.online?'PEER ONLINE':'WAITING...');}else if(x.type==='message_edit'){const target=document.querySelector('.msg[data-message-id="'+CSS.escape(String(x.id))+'"]');if(target){const textEl=target.querySelector('.msg-text');if(textEl){textEl.textContent=x.text||'';const edited=document.createElement('span');edited.className='edited-label';edited.textContent=' (edited)';textEl.appendChild(edited);}}}else if(x.type==='message_delete'){const target=document.querySelector('.msg[data-message-id="'+CSS.escape(String(x.id))+'"]');if(target)target.remove();}else if(['offer','answer','candidate','hangup','reject','busy'].includes(x.type)){signal(x);}}catch(err){console.error('WS message error',err);}};};
+$('join').onclick=async()=>{name=$('name').value.trim();room=$('room').value.trim();if(!name||!room){alert('username and room_code required');return;}sessionStorage.setItem('twochatName',name);sessionStorage.setItem('twochatRoom',room);$('setup').classList.add('hidden');$('chat').style.display='flex';setStatus('CONNECTING...');await history();const proto=location.protocol==='https:'?'wss':'ws';ws=new WebSocket(proto+'://'+location.host+'/ws?room='+encodeURIComponent(room)+'&name='+encodeURIComponent(name));ws.onopen=()=>{setStatus('ONLINE');};ws.onclose=()=>{setStatus('DISCONNECTED');};ws.onerror=()=>{setStatus('CONNECTION ERROR');};ws.onmessage=e=>{try{const x=JSON.parse(e.data);if(x.type==='message'||x.type==='attachment'){add(x);}
+else if (x.type === 'peer') {
+      // ------- FIXED: show last seen ----------
+      if (x.online) {
+        setStatus('PEER ONLINE');
+      } else if (x.lastSeen) {
+        const diff = Date.now() - x.lastSeen;
+        const seconds = Math.floor(diff / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
+        let label = '';
+        if (seconds < 60) label = 'Just now';
+        else if (minutes < 60) label = minutes + 'm ago';
+        else if (hours < 24) label = hours + 'h ago';
+        else label = days + 'd ago';
+        setStatus('Last seen ' + label);
+      } else {
+        setStatus('WAITING...');
+      }
+      // ----------------------------------------
+    } else if (x.type === 'message_edit') {
+      const target = document.querySelector('.msg[data-message-id="' + CSS.escape(String(x.id)) + '"]');
+      if (target) {
+        const textEl = target.querySelector('.msg-text');
+        if (textEl) {
+          textEl.textContent = x.text || '';
+          const edited = document.createElement('span');
+          edited.className = 'edited-label';
+          edited.textContent = ' (edited)';
+          textEl.appendChild(edited);
+        }
+      }
+    } else if (x.type === 'message_delete') {
+      const target = document.querySelector('.msg[data-message-id="' + CSS.escape(String(x.id)) + '"]');
+      if (target) target.remove();
+    } else if (['offer', 'answer', 'candidate', 'hangup', 'reject', 'busy'].includes(x.type)) {
+      signal(x);
+    }
+  } catch (err) {
+    console.error('WS message error', err);
+  }
+};};
 $('send').onclick=send;$('attach').onclick=()=>{$('file').click();};$('file').onchange=uploadFile;$('voice').onclick=()=>{startCall(false);};$('video').onclick=()=>{startCall(true);};$('leave').onclick=()=>{hangup();};$('leave2').onclick=()=>{hangup();};$('accept').onclick=acceptIncoming;$('reject').onclick=rejectIncoming;
 const sn=sessionStorage.getItem('twochatName');const sr=sessionStorage.getItem('twochatRoom');if(sn)$('name').value=sn;if(sr)$('room').value=sr;
 async function editMessage(m){
@@ -390,18 +432,90 @@ export default{
 function clean(v){ return String(v||'').trim().slice(0,128); }
 function json(data,status){ return new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json',...CORS}}); }
 // ===== END PART 3 =====
-// ===== PART 4 =====
+// ===== PART 4 (UPDATED with last seen) =====
 export class Room{
-  constructor(state){ this.state=state; this.clients=new Map(); }
-  async fetch(request){
-    const url=new URL(request.url);
-    if(url.pathname==='/broadcast' && request.method==='POST'){ const msg=await request.json(); for(const ws of this.clients.keys()){ try{ ws.send(JSON.stringify(msg)); }catch{} } return new Response('ok'); }
-    if(url.pathname==='/ws'){
-      const pair=new WebSocketPair(); const [client,server]=Object.values(pair); const name=url.searchParams.get('name')||'Guest'; server.accept(); this.clients.set(server,name); server.send(JSON.stringify({type:'peer',online:this.clients.size>1})); this.broadcast({type:'peer',online:this.clients.size>1},server); server.addEventListener('message',event=>{ try{ const x=JSON.parse(event.data); if(['offer','answer','candidate','hangup','reject','busy'].includes(x.type)){ this.broadcast({...x,from:name},server); } }catch{} }); server.addEventListener('close',()=>{ this.clients.delete(server); this.broadcast({type:'peer',online:this.clients.size>1}); }); return new Response(null,{status:101,webSocket:client});
-    }
-    return new Response('not found',{status:404});
+  constructor(state){
+    this.state = state;
+    this.clients = new Map();        // WebSocket -> name
+    this.lastSeen = new Map();       // name -> timestamp
   }
-  broadcast(obj, except){ for(const ws of this.clients.keys()){ if(ws===except) continue; try{ ws.send(JSON.stringify(obj)); }catch{} } }
+
+  async fetch(request){
+    const url = new URL(request.url);
+
+    if(url.pathname === '/broadcast' && request.method === 'POST'){
+      const msg = await request.json();
+      for(const ws of this.clients.keys()){
+        try{ ws.send(JSON.stringify(msg)); } catch(e){}
+      }
+      return new Response('ok');
+    }
+
+    if(url.pathname === '/ws'){
+      const pair = new WebSocketPair();
+      const [client, server] = Object.values(pair);
+      const name = url.searchParams.get('name') || 'Guest';
+      server.accept();
+
+      // Save client and update last seen
+      this.clients.set(server, name);
+      this.lastSeen.set(name, Date.now());
+
+      // Send initial peer status (including own last seen? we'll send other's)
+      this.broadcastPeerStatus(server);
+
+      server.addEventListener('message', event => {
+        try{
+          const x = JSON.parse(event.data);
+          // Update last seen on any message
+          this.lastSeen.set(name, Date.now());
+          // Forward signaling messages
+          if(['offer','answer','candidate','hangup','reject','busy'].includes(x.type)){
+            this.broadcast({...x, from: name}, server);
+          }
+        } catch(e){}
+      });
+
+      server.addEventListener('close', () => {
+        this.clients.delete(server);
+        this.lastSeen.set(name, Date.now());   // record last seen time
+        this.broadcastPeerStatus();            // tell everyone
+      });
+
+      return new Response(null, { status: 101, webSocket: client });
+    }
+
+    return new Response('not found', { status: 404 });
+  }
+
+  // Helper to broadcast the current peer status (online + last seen of others)
+  broadcastPeerStatus(except = null){
+    // For each client, send the list of other users' last seen
+    // Since we only have two users, we can just send the other's last seen.
+    const all = Array.from(this.clients.values());
+    for(const [ws, name] of this.clients){
+      if(ws === except) continue;
+      // Find the other user (if any)
+      const others = all.filter(n => n !== name);
+      const otherName = others.length > 0 ? others[0] : null;
+      const lastSeen = otherName ? this.lastSeen.get(otherName) : null;
+      const online = this.clients.size > 1;
+      try{
+        ws.send(JSON.stringify({
+          type: 'peer',
+          online: online,
+          lastSeen: lastSeen  // timestamp or null
+        }));
+      } catch(e){}
+    }
+  }
+
+  broadcast(obj, except){
+    for(const ws of this.clients.keys()){
+      if(ws === except) continue;
+      try{ ws.send(JSON.stringify(obj)); } catch(e){}
+    }
+  }
 }
 // ===== END PART 4 =====
   
