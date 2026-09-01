@@ -517,6 +517,6 @@ export class Room {
       try { ws.send(JSON.stringify(obj)); } catch (e) {}
     }
   }
-
+}
 // ===== END PART 4 =====
   
