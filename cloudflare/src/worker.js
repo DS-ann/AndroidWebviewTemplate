@@ -89,7 +89,7 @@ main{width:min(900px,100%);height:100%;display:flex;flex-direction:column;backgr
 </head>
 <body>
 <main>
-  <div class="top"><div class="brand">ASUS VS REDMI</div><div id="status" class="status">[ OFFLINE ]</div></div>
+  <div class="top"><div class="brand">CHAT</div><div id="status" class="status">[ OFFLINE ]</div></div>
   <section id="setup" class="setup">
     <h2>./join-room</h2><p>Enter your identity and private room code.</p>
     <input id="name" maxlength="40" placeholder="username">
