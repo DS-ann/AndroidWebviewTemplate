@@ -11,7 +11,7 @@ const HTML = `
 <html>
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Asus vs Redmi // Terminal</title>
+<title>CHAT // Terminal</title>
 <style>
 *{box-sizing:border-box;}
 html,body{margin:0;height:100%;background:#050805;color:#c8ffc8;font-family:"Courier New",monospace;}
